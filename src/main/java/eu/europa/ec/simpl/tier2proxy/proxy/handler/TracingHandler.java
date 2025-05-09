@@ -8,30 +8,41 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 final class TracingHandler extends ChannelDuplexHandler {
-	private final String where;
-	TracingHandler(String where) {
-		super();
-		this.where = where;
-	}
+    private final String where;
 
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) {
-		if (log.isDebugEnabled()) {
-			log.debug("{} - [{}] - READ {}: {}", where, ctx.channel(), ctx.channel().pipeline(), msg);
-		}
-		ctx.fireChannelRead(msg);
+    TracingHandler(String where) {
+        super();
+        this.where = where;
+    }
 
-		log.info("<-------- {}", ctx.pipeline().get(SslHandler.class) == null);
-	}
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "{} - [{}] - READ {}: {}",
+                    where,
+                    ctx.channel(),
+                    ctx.channel().pipeline(),
+                    msg);
+        }
+        ctx.fireChannelRead(msg);
 
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (log.isDebugEnabled()) {
-			log.debug("{} - [{}] - WRITE {}: {}", where, ctx.channel(), ctx.channel().pipeline(), msg);
-		}
+        log.info("<-------- {}", ctx.pipeline().get(SslHandler.class) == null);
+    }
 
-		super.write(ctx, msg, promise);
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "{} - [{}] - WRITE {}: {}",
+                    where,
+                    ctx.channel(),
+                    ctx.channel().pipeline(),
+                    msg);
+        }
 
-		log.info("<-------- {}", ctx.pipeline().get(SslHandler.class) == null);
-	}
+        super.write(ctx, msg, promise);
+
+        log.info("<-------- {}", ctx.pipeline().get(SslHandler.class) == null);
+    }
 }
