@@ -1,0 +1,5 @@
+target/
+.idea/
+_managed_ca/
+certificate.pem
+stuff.txt
