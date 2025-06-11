@@ -29,28 +29,22 @@ final class FromHTTPHandler extends SimpleChannelInboundHandler<FullHttpResponse
         this.source = source;
 
         if (isTLS) {
-
             try {
                 this.tlsClientContext = TLS.getClientSslContext();
             } catch (SSLException e) {
                 throw new IllegalStateException("client ssl context cannot be initialized", e);
             }
         } else {
-
             this.tlsClientContext = null;
         }
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("handler added for {}", this.dest);
-        }
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        log.debug("handler added for {}", this.dest);
 
         if (this.tlsClientContext != null) {
-            if (log.isDebugEnabled()) {
-                log.debug("handling client tls connection for {}", this.dest);
-            }
+            log.debug("handling client tls connection for {}", this.dest);
 
             SSLEngine sslEngine = this.tlsClientContext.newEngine(ctx.alloc(), dest.addr(), dest.port());
 
@@ -65,10 +59,8 @@ final class FromHTTPHandler extends SimpleChannelInboundHandler<FullHttpResponse
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("handler removed for {}", this.dest);
-        }
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        log.debug("handler removed for {}", this.dest);
 
         if (this.tlsClientContext != null) {
             ctx.pipeline().remove(SslHandler.class.getCanonicalName());
@@ -79,18 +71,14 @@ final class FromHTTPHandler extends SimpleChannelInboundHandler<FullHttpResponse
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FullHttpResponse response) {
-        if (log.isDebugEnabled()) {
-            log.debug("forward data for {}: {}", this.dest, response.status());
-        }
+        log.debug("forward data for {}: {}", this.dest, response.status());
         FullHttpResponse retainedResponse = ReferenceCountUtil.retain(response);
         source.writeAndFlush(retainedResponse);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        if (log.isDebugEnabled()) {
-            log.debug("channel inactive for {}", this.dest);
-        }
+        log.debug("channel inactive for {}", this.dest);
         source.close();
         ctx.close();
     }

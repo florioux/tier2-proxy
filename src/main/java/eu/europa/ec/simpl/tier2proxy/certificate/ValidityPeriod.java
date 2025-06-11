@@ -14,11 +14,15 @@ import lombok.extern.slf4j.Slf4j;
 final class ValidityPeriod {
     record CertificateValidityPeriod(Date before, Date after) {}
 
-    private final int beforeDateAmountToSubtract, afterDateAmountToAdd;
-    @NonNull private final ChronoUnit beforeDateAmountToSubtractUnit, afterDateAmountToAddUnit;
+    private final int beforeDateAmountToSubtract;
+    private final int afterDateAmountToAdd;
+
+    @NonNull private final ChronoUnit beforeDateAmountToSubtractUnit;
+
+    @NonNull private final ChronoUnit afterDateAmountToAddUnit;
 
     CertificateValidityPeriod from() {
-        Instant beforeInstant = Instant.now()
+        var beforeInstant = Instant.now()
                 .atZone(ZoneId.systemDefault())
                 .minus(beforeDateAmountToSubtract, beforeDateAmountToSubtractUnit)
                 .toInstant();

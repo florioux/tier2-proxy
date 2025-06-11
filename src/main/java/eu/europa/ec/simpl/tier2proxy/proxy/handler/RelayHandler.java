@@ -15,21 +15,14 @@ final class RelayHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("handler added for {}", ctx.channel());
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("pipeline: {}", ctx.pipeline());
-        }
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        log.debug("handler added for {}", ctx.channel());
+        log.debug("pipeline: {}", ctx.pipeline());
     }
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Object msg) {
-        if (log.isDebugEnabled()) {
-            log.debug("DA SOCAT {}: {}", ctx.channel().pipeline(), msg);
-        }
+        log.debug("DA SOCAT {}: {}", ctx.channel().pipeline(), msg);
         inboundChannel.writeAndFlush(ReferenceCountUtil.retain(msg));
     }
 

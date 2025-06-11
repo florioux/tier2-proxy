@@ -17,14 +17,7 @@ final class TracingHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "{} - [{}] - READ {}: {}",
-                    where,
-                    ctx.channel(),
-                    ctx.channel().pipeline(),
-                    msg);
-        }
+        log.debug("{} - [{}] - READ {}: {}", where, ctx.channel(), ctx.channel().pipeline(), msg);
         ctx.fireChannelRead(msg);
 
         log.info("<-------- {}", ctx.pipeline().get(SslHandler.class) == null);
@@ -32,14 +25,8 @@ final class TracingHandler extends ChannelDuplexHandler {
 
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "{} - [{}] - WRITE {}: {}",
-                    where,
-                    ctx.channel(),
-                    ctx.channel().pipeline(),
-                    msg);
-        }
+        log.debug(
+                "{} - [{}] - WRITE {}: {}", where, ctx.channel(), ctx.channel().pipeline(), msg);
 
         super.write(ctx, msg, promise);
 

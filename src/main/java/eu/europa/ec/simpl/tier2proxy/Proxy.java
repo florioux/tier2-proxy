@@ -33,9 +33,7 @@ import org.bouncycastle.asn1.x500.X500Name;
 @Slf4j
 public final class Proxy {
     public static void main(String[] args) {
-        if (log.isInfoEnabled()) {
-            log.info("starting");
-        }
+        log.info("starting");
         OsType osType = OsType.fromOS();
         ProxyOptions proxyOptions = new ProxyOptions(1);
         TeardownPolicy teardownPolicy = new TeardownPolicy(2, 10, TimeUnit.SECONDS);
@@ -52,21 +50,17 @@ public final class Proxy {
         try {
             certificates = new Certificates(options, certificateAuthorityRepository);
         } catch (NoSuchAlgorithmException e) {
-            if (log.isErrorEnabled()) {
-                log.error(
-                        "error initializing dynamic certificate authority with options {} and repository {}",
-                        options,
-                        certificateAuthorityRepository,
-                        e);
-            }
+            log.error(
+                    "error initializing dynamic certificate authority with options {} and repository {}",
+                    options,
+                    certificateAuthorityRepository,
+                    e);
             System.exit(1);
             return;
         }
 
         CertificateInfo caCertificateInfo = certificates.getCaCertificate();
-        if (log.isDebugEnabled()) {
-            log.debug("certificate authority {}", caCertificateInfo);
-        }
+        log.debug("certificate authority {}", caCertificateInfo);
 
         var caCertificate = caCertificateInfo.certificate();
         try (EventExecutor executor = new DefaultEventLoop()) {
@@ -107,9 +101,7 @@ public final class Proxy {
 
             endingPromise.sync();
         } catch (InterruptedException e) {
-            if (log.isErrorEnabled()) {
-                log.error("proxy is interrupted", e);
-            }
+            log.error("proxy is interrupted", e);
             System.exit(1);
             return;
         }

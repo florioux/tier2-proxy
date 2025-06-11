@@ -22,7 +22,7 @@ public final class TrafficHandler extends SimpleChannelInboundHandler<ByteBuf> {
     private final Addr dest;
     private final int httpObjectAggregatorMaxContentLength;
 
-    private boolean isTLS(ByteBuf msg) {
+    private static boolean isTLS(ByteBuf msg) {
         int firstByte = msg.getUnsignedByte(0);
         int secondByte = msg.getUnsignedByte(1);
 
@@ -31,13 +31,10 @@ public final class TrafficHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-        if (log.isInfoEnabled()) {
-            log.info("inbound for {}: {}", ctx.name(), msg);
-        }
+        log.info("inbound for {}: {}", ctx.name(), msg);
         var messageCopy = msg.copy();
-        boolean isTls = isTLS(messageCopy);
 
-        if (isTls) {
+        if (isTLS(messageCopy)) {
             Optional<String> sni = TLS.extractSNI(messageCopy);
 
             if (sni.isEmpty()) {
