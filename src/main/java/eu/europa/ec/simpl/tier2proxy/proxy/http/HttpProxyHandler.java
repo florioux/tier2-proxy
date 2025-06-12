@@ -7,8 +7,15 @@ import eu.europa.ec.simpl.tier2proxy.proxy.handler.MitmHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.internal.StringUtil;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.Getter;
@@ -33,10 +40,8 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("adding handler for {}", ctx.channel());
-        }
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        log.debug("adding handler for {}", ctx.channel());
 
         ctx.pipeline()
                 .addBefore(ctx.name(), this.httpServerCodec.handlerName(), this.httpServerCodec.handler())
@@ -44,19 +49,15 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("removing handler for {}", ctx.channel());
-        }
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        log.debug("removing handler for {}", ctx.channel());
 
         ctx.pipeline().remove(this.httpServerCodec.handler()).remove(this.httpObjectAggregator.handler());
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
-        if (log.isInfoEnabled()) {
-            log.info("reading {} from {}", request, ctx.channel());
-        }
+        log.info("reading {} from {}", request, ctx.channel());
         if (request.method() == HttpMethod.CONNECT) {
             handleConnectHTTPMessage(ctx, request);
         } else {
@@ -68,21 +69,14 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
         if (this.dest == null) {
             this.dest = FullPath.resolveAddrInConnect(request.uri());
         }
-        if (log.isDebugEnabled()) {
-            log.debug("[HttpProxyHandler] handleConnectHTTPMessage: {} -> {}", this.dest, request);
-        }
+        log.debug("[HttpProxyHandler] handleConnectHTTPMessage: {} -> {}", this.dest, request);
 
         var response = new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
-        if (log.isInfoEnabled()) {
-
-            log.info("[Client] <= [Proxy] : {}", response);
-        }
+        log.info("[Client] <= [Proxy] : {}", response);
 
         ctx.writeAndFlush(response);
 
-        if (log.isDebugEnabled()) {
-            log.debug("hijacking TLS for {}", this.dest);
-        }
+        log.debug("hijacking TLS for {}", this.dest);
 
         HandlerInPipeline<ChannelHandler, ChannelHandler> mitmHandler = new HandlerInPipeline<>(
                 this,
@@ -100,13 +94,8 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
             this.dest = path.toAddr();
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("handlePlainTextHTTPMessage: {} -> {}", this.dest, request);
-        }
-
-        if (log.isInfoEnabled()) {
-            log.info("Establish connection to the target server to {}", dest);
-        }
+        log.debug("handlePlainTextHTTPMessage: {} -> {}", this.dest, request);
+        log.info("Establish connection to the target server to {}", dest);
 
         HandlerInPipeline<ChannelHandler, ChannelHandler> mitmHandler = new HandlerInPipeline<>(
                 this,
@@ -116,56 +105,58 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
                 .replace(this, mitmHandler.handlerName(), mitmHandler.handler())
                 .fireChannelRead(ReferenceCountUtil.retain(request));
     }
-}
 
-@Getter
-final class FullPath {
-    private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
-    private final String scheme;
-    private final String host;
-    private final int port;
-    private final String path;
+    @Getter
+    static final class FullPath {
 
-    private static final Pattern CONNECT_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
+        private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
+        private static final Pattern CONNECT_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
 
-    static Addr resolveAddrInConnect(String addr) {
-        Matcher matcher = CONNECT_ADDR_PATTERN.matcher(addr);
-        if (matcher.find()) {
-            return new Addr(matcher.group(1), Integer.parseInt(matcher.group(2)));
-        } else {
-            throw new IllegalStateException("Illegal tunnel addr: " + addr);
+        private final String scheme;
+        private final String host;
+        private final int port;
+        private final String path;
+
+        static Addr resolveAddrInConnect(String addr) {
+            Matcher matcher = CONNECT_ADDR_PATTERN.matcher(addr);
+            if (matcher.find()) {
+                return new Addr(matcher.group(1), Integer.parseInt(matcher.group(2)));
+            } else {
+                throw new IllegalStateException("Illegal tunnel addr: " + addr);
+            }
         }
-    }
 
-    private static int resolvePort(String scheme, String port) {
-        if (port == null || port.equalsIgnoreCase("")) {
-            return "https".equals(scheme) ? 443 : 80;
+        private static int resolvePort(String scheme, String port) {
+            if (StringUtil.isNullOrEmpty(port)) {
+                return "https".equals(scheme) ? 443 : 80;
+            }
+            return Integer.parseInt(port);
         }
-        return Integer.parseInt(port);
-    }
 
-    FullPath(String fullPath) {
-        Matcher matcher = PATH_PATTERN.matcher(fullPath);
-        if (matcher.find()) {
-            this.scheme = matcher.group(1);
-            this.host = matcher.group(2);
-            this.port = resolvePort(scheme, matcher.group(4));
-            this.path = matcher.group(5);
-        } else {
-            throw new IllegalStateException("Illegal http proxy path: " + fullPath);
+        FullPath(String fullPath) {
+            var matcher = PATH_PATTERN.matcher(fullPath);
+            if (matcher.find()) {
+                var i = new AtomicInteger(0);
+                this.scheme = matcher.group(i.incrementAndGet());
+                this.host = matcher.group(i.incrementAndGet());
+                this.port = resolvePort(scheme, matcher.group(i.incrementAndGet()));
+                this.path = matcher.group(i.incrementAndGet());
+            } else {
+                throw new IllegalStateException("Illegal http proxy path: " + fullPath);
+            }
         }
-    }
 
-    Addr toAddr() {
-        return new Addr(this.host, this.port);
-    }
+        Addr toAddr() {
+            return new Addr(this.host, this.port);
+        }
 
-    @Override
-    public String toString() {
-        return "FullPath{" + "scheme='"
-                + scheme + '\'' + ", host='"
-                + host + '\'' + ", port="
-                + port + ", path='"
-                + path + '\'' + '}';
+        @Override
+        public String toString() {
+            return "FullPath{" + "scheme='"
+                    + scheme + '\'' + ", host='"
+                    + host + '\'' + ", port="
+                    + port + ", path='"
+                    + path + '\'' + '}';
+        }
     }
 }

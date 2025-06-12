@@ -28,15 +28,11 @@ final class TransparentProxyServerInitializer extends ChannelInitializer<SocketC
         try {
             dest = OsIntegration.getDestAddr(channel);
         } catch (UnknownHostException e) {
-            if (log.isWarnEnabled()) {
-                log.warn("transparent proxy remote address is not a valid address", e);
-            }
+            log.warn("transparent proxy remote address is not a valid address", e);
             return;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("initializing pipeline for {}", channel);
-        }
+        log.debug("initializing pipeline for {}", channel);
 
         channel.pipeline()
                 .addLast(
@@ -45,8 +41,6 @@ final class TransparentProxyServerInitializer extends ChannelInitializer<SocketC
                                 this.certificates,
                                 dest,
                                 this.transparentProxyServerOptions.httpObjectAggregatorMaxContentLength()));
-        if (log.isDebugEnabled()) {
-            log.debug("pipeline for {} initialized", channel);
-        }
+        log.debug("pipeline for {} initialized", channel);
     }
 }

@@ -2,7 +2,11 @@ package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
 import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -39,15 +43,13 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+    public void handlerAdded(ChannelHandlerContext ctx) {
         if (log.isDebugEnabled()) {
             log.debug("handler added for {}", this.dest);
         }
 
         if (this.tlsClientContext != null) {
-            if (log.isDebugEnabled()) {
-                log.debug("handling client tls connection for {}", this.dest);
-            }
+            log.debug("handling client tls connection for {}", this.dest);
 
             SSLEngine sslEngine = this.tlsClientContext.newEngine(ctx.alloc(), dest.addr(), dest.port());
 
@@ -62,10 +64,8 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("handler removed for {}", this.dest);
-        }
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        log.debug("handler removed for {}", this.dest);
 
         if (this.tlsClientContext != null) {
             ctx.pipeline().remove(SslHandler.class.getCanonicalName());
@@ -76,17 +76,13 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Object msg) {
-        if (log.isDebugEnabled()) {
-            log.debug("DAL ECHO {}: {}", ctx.channel().pipeline(), msg);
-        }
+        log.debug("DAL ECHO {}: {}", ctx.channel().pipeline(), msg);
         var retainedMessage = ReferenceCountUtil.retain(msg);
         source.writeAndFlush(retainedMessage)
                 .addListener((ChannelFutureListener) future -> {
                     var channel = future.channel();
                     var pipeline = channel.pipeline();
-                    if (log.isDebugEnabled()) {
-                        log.debug("removing from source channel {} http handlers", channel);
-                    }
+                    log.debug("removing from source channel {} http handlers", channel);
 
                     if (tlsClientContext == null) {
                         if (pipeline.get(MitmHandler.class.getCanonicalName()) != null) {
@@ -114,16 +110,13 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
     private void removeHandlers(ChannelHandlerContext ctx) {
         var channel = ctx.channel();
         var pipeline = channel.pipeline();
-        if (log.isDebugEnabled()) {
-            log.debug("removing from {} http handlers", channel);
-        }
+        log.debug("removing from {} http handlers", channel);
 
         if (pipeline.get(HttpClientCodec.class.getCanonicalName()) != null) {
             pipeline.remove(HttpClientCodec.class.getCanonicalName());
         }
-        if (log.isDebugEnabled()) {
-            log.debug("http client codec already removed");
-        }
+
+        log.debug("http client codec already removed");
 
         if (pipeline.get(HttpObjectAggregator.class.getCanonicalName()) != null) {
             pipeline.remove(HttpObjectAggregator.class.getCanonicalName());

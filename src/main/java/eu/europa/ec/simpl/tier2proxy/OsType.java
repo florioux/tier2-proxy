@@ -61,13 +61,9 @@ public enum OsType {
     }
 
     static OsType fromOS() {
-        if (log.isDebugEnabled()) {
-            log.debug("checking os type");
-        }
+        log.debug("checking os type");
         String os = System.getProperty("os.name");
-        if (log.isDebugEnabled()) {
-            log.debug("os type is {}", os);
-        }
+        log.debug("os type is {}", os);
         return fromStr(os);
     }
 

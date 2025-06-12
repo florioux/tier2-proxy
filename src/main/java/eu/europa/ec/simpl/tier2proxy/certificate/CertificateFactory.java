@@ -13,7 +13,13 @@ import java.util.NoSuchElementException;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.KeyPurposeId;
+import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -52,50 +58,35 @@ final class CertificateFactory {
     }
 
     CertificateInfo getCACertificate() {
-        if (log.isInfoEnabled()) {
-            log.info("certificate authority certificate for {}", this.caSubject);
-        }
+        log.info("certificate authority certificate for {}", this.caSubject);
         try {
-
             return this.certificateAuthorityRepository.getStoredCertificate(CA_KEY);
         } catch (NoSuchElementException exception) {
-            if (log.isDebugEnabled()) {
-                log.debug("no certificate authority certificate present, generate it", exception);
-            }
+            log.debug("no certificate authority certificate present, generate it", exception);
         }
 
         try {
 
             return this.createCACertificate();
         } catch (CertificateException | OperatorCreationException | IOException exception) {
-            if (log.isErrorEnabled()) {
-                log.error("certificate authority generation in error", exception);
-            }
-
+            log.error("certificate authority generation in error", exception);
             throw new IllegalStateException("certificate authority generation in error", exception);
         }
     }
 
     CertificateInfo getCertificate(CertificateInfo caCertificate, String host) {
-        if (log.isDebugEnabled()) {
-            log.debug("getting certificate information for {}", host);
-        }
+        log.debug("getting certificate information for {}", host);
         try {
-
             return this.certificateAuthorityRepository.getStoredCertificate(host);
         } catch (NoSuchElementException exception) {
-            if (log.isInfoEnabled()) {
-                log.info("no certificate for {} present, generate it", host);
-            }
+            log.info("no certificate for {} present, generate it", host);
         }
 
         try {
 
             return this.createCertificate(caCertificate, host);
         } catch (CertificateException | OperatorCreationException | IOException exception) {
-            if (log.isErrorEnabled()) {
-                log.error("certificate generation for {} in error", host, exception);
-            }
+            log.error("certificate generation for {} in error", host, exception);
             throw new IllegalStateException(String.format("certificate generation %s in error", host), exception);
         }
     }
@@ -110,9 +101,7 @@ final class CertificateFactory {
 
     private CertificateInfo createCertificate(CertificateInfo caCertificateInfo, String host)
             throws IOException, OperatorCreationException, CertificateException {
-        if (log.isDebugEnabled()) {
-            log.debug("creating certificate for {} given {} as certificate authority", host, caCertificateInfo);
-        }
+        log.debug("creating certificate for {} given {} as certificate authority", host, caCertificateInfo);
         X509Certificate caCertificate = caCertificateInfo.certificate();
         PrivateKey caPrivateKey = caCertificateInfo.privateKey();
 
@@ -151,9 +140,7 @@ final class CertificateFactory {
     }
 
     private CertificateInfo createCACertificate() throws CertificateException, OperatorCreationException, IOException {
-        if (log.isDebugEnabled()) {
-            log.debug("creating certificate authority certificate");
-        }
+        log.debug("creating certificate authority certificate");
         KeyPair keyPair = this.keyGen.generateKeyPair();
 
         var certificateValidityPeriod = this.certificateValidityPeriod.from();

@@ -2,9 +2,26 @@ package eu.europa.ec.simpl.tier2proxy.certificate.http;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.compression.CompressionOptions;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.HttpServerExpectContinueHandler;
+import io.netty.handler.codec.http.HttpUtil;
 import java.io.IOException;
 import java.security.cert.X509Certificate;
 import lombok.extern.slf4j.Slf4j;
@@ -42,9 +59,7 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        if (log.isDebugEnabled()) {
-            log.debug("adding handler for {}", ctx.channel().remoteAddress());
-        }
+        log.debug("adding handler for {}", ctx.channel().remoteAddress());
 
         ctx.pipeline()
                 .addBefore(ctx.name(), this.httpServerCodec.getClass().getCanonicalName(), this.httpServerCodec)
@@ -62,9 +77,7 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        if (log.isDebugEnabled()) {
-            log.debug("removing handler for {}", ctx.channel().remoteAddress());
-        }
+        log.debug("removing handler for {}", ctx.channel().remoteAddress());
 
         ChannelPipeline pipeline = ctx.pipeline();
 
@@ -79,9 +92,7 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
         HttpResponse response;
         if (request.method().equals(this.caServingEndpointMethod)
                 && request.uri().equals(this.caServingEndpointUri)) {
-            if (log.isInfoEnabled()) {
-                log.info("serving certificate for {}", ctx.channel().remoteAddress());
-            }
+            log.info("serving certificate for {}", ctx.channel().remoteAddress());
             FullHttpResponse theResponse = new DefaultFullHttpResponse(
                     request.protocolVersion(), HttpResponseStatus.OK, Unpooled.wrappedBuffer(this.certificate));
             theResponse
@@ -93,9 +104,7 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
 
             response = theResponse;
         } else {
-            if (log.isWarnEnabled()) {
-                log.warn("requested not found resource for {}", ctx.channel().remoteAddress());
-            }
+            log.warn("requested not found resource for {}", ctx.channel().remoteAddress());
 
             FullHttpResponse theResponse =
                     new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.NOT_FOUND);
@@ -124,17 +133,13 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        if (log.isInfoEnabled()) {
-            log.info("channel inactive for {}", ctx.channel().remoteAddress());
-        }
+        log.info("channel inactive for {}", ctx.channel().remoteAddress());
         ctx.close();
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        if (log.isWarnEnabled()) {
-            log.warn("exception serving certificate for {}", ctx.channel().remoteAddress(), cause);
-        }
+        log.warn("exception serving certificate for {}", ctx.channel().remoteAddress(), cause);
         ctx.close();
     }
 }

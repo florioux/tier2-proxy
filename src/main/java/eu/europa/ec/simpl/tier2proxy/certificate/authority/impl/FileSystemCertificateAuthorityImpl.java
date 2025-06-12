@@ -18,9 +18,7 @@ public final class FileSystemCertificateAuthorityImpl implements CertificateAuth
     private final Path certificatesFolder;
 
     public FileSystemCertificateAuthorityImpl(Path certificatesFolder) throws IOException {
-        if (log.isDebugEnabled()) {
-            log.debug("using filesystem certificate authority repository using {} as root folder", certificatesFolder);
-        }
+        log.debug("using filesystem certificate authority repository using {} as root folder", certificatesFolder);
         this.certificatesFolder = certificatesFolder;
 
         if (!certificatesFolder.toFile().exists()) {
@@ -30,9 +28,7 @@ public final class FileSystemCertificateAuthorityImpl implements CertificateAuth
 
     @Override
     public CertificateInfo getStoredCertificate(String host) throws NoSuchElementException {
-        if (log.isDebugEnabled()) {
-            log.debug("retrieving certificate information from {}", host);
-        }
+        log.debug("retrieving certificate information from {}", host);
         var certificateSubFolder = this.certificatesFolder.resolve(host);
         if (!certificateSubFolder.toFile().exists()) {
             throw new NoSuchElementException(host + " certificate not found (folder is missing)");
@@ -63,14 +59,11 @@ public final class FileSystemCertificateAuthorityImpl implements CertificateAuth
 
     @Override
     public void storeCertificate(String host, CertificateInfo certificateInfo) throws IOException {
-        if (log.isDebugEnabled()) {
-            log.debug("storing certificate information for {}", host);
-        }
+        log.debug("storing certificate information for {}", host);
         var certificateSubFolder = this.certificatesFolder.resolve(host);
         if (!certificateSubFolder.toFile().exists()) {
             Files.createDirectory(certificateSubFolder);
         } else {
-
             return;
         }
 

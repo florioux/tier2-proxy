@@ -3,7 +3,11 @@ package eu.europa.ec.simpl.tier2proxy.certificate;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Security;
@@ -28,15 +32,12 @@ public final class Certificates {
 
     public Certificates(CertificateOptions co, CertificateAuthorityRepository certificateAuthorityRepository)
             throws NoSuchAlgorithmException {
-        if (log.isDebugEnabled()) {
-            log.info("loading bouncycastle provider");
-        }
+        log.info("loading bouncycastle provider");
+
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
         Security.addProvider(new BouncyCastleProvider());
 
-        if (log.isInfoEnabled()) {
-            log.info("loading certificate authority repository");
-        }
+        log.info("loading certificate authority repository");
 
         try {
             this.certificateFactory = new CertificateFactory(
@@ -46,9 +47,7 @@ public final class Certificates {
                     co.signatureAlgo(),
                     certificateAuthorityRepository);
         } catch (NoSuchAlgorithmException e) {
-            if (log.isErrorEnabled()) {
-                log.error("error while loading certificate factory", e);
-            }
+            log.error("error while loading certificate factory", e);
             throw new NoSuchAlgorithmException("error while loading certificate factory", e);
         }
 
@@ -60,17 +59,13 @@ public final class Certificates {
                         co.certificateCache().certificateCacheExpirationDurationTimeUnit())
                 .maximumSize(co.certificateCache().certificatesCacheSize())
                 .build(host -> {
-                    if (log.isDebugEnabled()) {
-                        log.debug("getting certificate for {}", host);
-                    }
+                    log.debug("getting certificate for {}", host);
                     return certificateFactory.getCertificate(caCertificate, host);
                 });
     }
 
     public CertificateInfo certificateFor(String host) {
-        if (log.isDebugEnabled()) {
-            log.debug("certificate for {} host", host);
-        }
+        log.debug("certificate for {} host", host);
         return this.certsCache.get(host);
     }
 
@@ -94,13 +89,10 @@ public final class Certificates {
 
                 return kp.getPrivate();
             } else {
-
-                throw new IOException(String.format("read file %s is not a PEMKeyPair", object));
+                throw new IOException("File is not a PEMKeyPair");
             }
         } catch (IOException e) {
-            if (log.isErrorEnabled()) {
-                log.error("error while reading private key from byte[]: {}", privateKeyBytes, e);
-            }
+            log.error("error while reading private key from byte[]");
             throw e;
         }
     }

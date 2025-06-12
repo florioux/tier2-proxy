@@ -13,23 +13,19 @@ final class CertificateServerHandlerInitializer extends ChannelInitializer<Socke
 
     public CertificateServerHandlerInitializer(
             CertificateServerOptions certificateServerOptions, X509Certificate caCertificate) {
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "initializing certificate handler for certificate {}",
-                    caCertificate.getSubjectX500Principal().getName());
-        }
+        log.debug(
+                "initializing certificate handler for certificate {}",
+                caCertificate.getSubjectX500Principal().getName());
         this.certificateServerOptions = certificateServerOptions;
         this.caCertificate = caCertificate;
     }
 
     @Override
     protected void initChannel(SocketChannel ch) throws IOException {
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "initializing channel for certificate {} from {}",
-                    caCertificate.getSubjectX500Principal(),
-                    ch.remoteAddress());
-        }
+        log.debug(
+                "initializing channel for certificate {} from {}",
+                caCertificate.getSubjectX500Principal(),
+                ch.remoteAddress());
 
         CertificateServerHandler handler =
                 new CertificateServerHandler(this.certificateServerOptions, this.caCertificate);

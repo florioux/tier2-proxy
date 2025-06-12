@@ -19,9 +19,8 @@ public record CertificateOptions(
 
     public record PrivateKey(String algo, AlgorithmParameterSpec algoParameterSpec, SecureRandom random) {
         KeyPairGenerator of() throws NoSuchAlgorithmException {
-            KeyPairGenerator toReturn = null;
             try {
-                toReturn = KeyPairGenerator.getInstance(algo);
+                var toReturn = KeyPairGenerator.getInstance(algo);
                 toReturn.initialize(algoParameterSpec, random);
 
                 return toReturn;

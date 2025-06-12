@@ -20,9 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class TLS {
     public static SslContext getClientSslContext() throws SSLException {
-        if (log.isDebugEnabled()) {
-            log.debug("Creating client TLS context");
-        }
+        log.debug("Creating client TLS context");
         return SslContextBuilder.forClient()
                 .trustManager(trustManagersFactory)
                 .sslProvider(sslProvider())
@@ -31,9 +29,7 @@ public final class TLS {
 
     public static SslContext getServerSslContext(PrivateKey privateKey, X509Certificate certificate)
             throws SSLException {
-        if (log.isDebugEnabled()) {
-            log.debug("Creating server TLS context for {}", certificate.getSubjectX500Principal());
-        }
+        log.debug("Creating server TLS context for {}", certificate.getSubjectX500Principal());
         return SslContextBuilder.forServer(privateKey, certificate)
                 .sslProvider(sslProvider())
                 .build();
@@ -70,10 +66,14 @@ public final class TLS {
             int extensionType = buffer.readUnsignedShort();
             int extensionLength = buffer.readUnsignedShort();
 
-            if (extensionType == 0x00) { // 0x00 is the SNI extension type
-                buffer.readUnsignedShort(); // Skip SNI list length
+            // 0x00 is the SNI extension type
+            if (extensionType == 0x00) {
+                // Skip SNI list length
+                buffer.readUnsignedShort();
                 int sniType = buffer.readUnsignedByte();
-                if (sniType == 0x00) { // Hostname type
+
+                // Hostname type
+                if (sniType == 0x00) {
                     int sniLength = buffer.readUnsignedShort();
                     return Optional.of(buffer.readCharSequence(sniLength, StandardCharsets.UTF_8)
                             .toString());
@@ -91,9 +91,9 @@ public final class TLS {
 
     static {
         /*try {
-        	trustManagersFactory = getSystemTrustManagers();
+            trustManagersFactory = getSystemTrustManagers();
         } catch(NoSuchAlgorithmException | KeyStoreException e) {
-        	throw new RuntimeException(e);
+            throw new RuntimeException(e);
         }*/
         trustManagersFactory = InsecureTrustManagerFactory.INSTANCE; // TODO remove this!
     }
@@ -108,16 +108,11 @@ public final class TLS {
 
     private static SslProvider sslProvider() {
         if (OpenSsl.isAlpnSupported()) {
-            if (log.isDebugEnabled()) {
-
-                log.debug("Using OpenSsl TLS provider");
-            }
+            log.debug("Using OpenSsl TLS provider");
             return SslProvider.OPENSSL;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Using JDK TLS provider");
-        }
+        log.debug("Using JDK TLS provider");
         return SslProvider.JDK;
     }
 }

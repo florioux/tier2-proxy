@@ -14,16 +14,12 @@ final class SocksProtocolProxyServerInitializer extends ChannelInitializer<Chann
 
     @Override
     protected void initChannel(Channel channel) {
-        if (log.isDebugEnabled()) {
-            log.debug("initializing pipeline for {}", channel);
-        }
+        log.debug("initializing pipeline for {}", channel);
 
         channel.pipeline()
                 .addLast(
                         SocksProtocolProxyHandler.class.getCanonicalName(),
                         new SocksProtocolProxyHandler(this.certificates, this.socksProtocolServerOptions));
-        if (log.isDebugEnabled()) {
-            log.debug("pipeline for {} initialized", channel);
-        }
+        log.debug("pipeline for {} initialized", channel);
     }
 }

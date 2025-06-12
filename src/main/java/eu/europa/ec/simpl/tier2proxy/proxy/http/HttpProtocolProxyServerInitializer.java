@@ -14,14 +14,10 @@ final class HttpProtocolProxyServerInitializer extends ChannelInitializer<Channe
 
     @Override
     protected void initChannel(Channel channel) {
-        if (log.isDebugEnabled()) {
-            log.debug("initializing pipeline for {}", channel);
-        }
+        log.debug("initializing pipeline for {}", channel);
 
         HttpProxyHandler handler = new HttpProxyHandler(httpProtocolServerOptions, certificates);
         channel.pipeline().addLast(HttpProxyHandler.class.getCanonicalName(), handler);
-        if (log.isDebugEnabled()) {
-            log.debug("pipeline for {} initialized", channel);
-        }
+        log.debug("pipeline for {} initialized", channel);
     }
 }

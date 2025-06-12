@@ -19,9 +19,7 @@ public abstract class Server {
         return this.doStart()
                 .addListener(future -> {
                     if (future.isSuccess()) {
-                        if (log.isInfoEnabled()) {
-                            log.info("server {}:{} started", config.bindAddr(), config.bindPort());
-                        }
+                        log.info("server {}:{} started", config.bindAddr(), config.bindPort());
                     }
                 })
                 .channel()

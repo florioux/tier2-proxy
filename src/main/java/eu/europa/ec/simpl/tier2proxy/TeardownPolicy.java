@@ -10,21 +10,15 @@ public record TeardownPolicy(int quietPeriod, int timeout, TimeUnit unit) {
 
     static Runnable tearDownJob(TeardownPolicy teardownPolicy, EventLoopGroup bossGroup, Server... servers) {
         return () -> {
-            if (log.isInfoEnabled()) {
-                log.info("stopping server");
-            }
+            log.info("stopping server");
 
             if (servers != null) {
                 for (var aServer : servers) {
                     if (aServer != null) {
-                        if (log.isInfoEnabled()) {
-                            log.info("stopping server {}", aServer.name());
-                        }
+                        log.info("stopping server {}", aServer.name());
 
                         aServer.stop(teardownPolicy.quietPeriod(), teardownPolicy.timeout(), teardownPolicy.unit());
-                        if (log.isInfoEnabled()) {
-                            log.info("stopped server {}", aServer.name());
-                        }
+                        log.info("stopped server {}", aServer.name());
                     }
                 }
             } else if (log.isWarnEnabled()) {
@@ -38,9 +32,7 @@ public record TeardownPolicy(int quietPeriod, int timeout, TimeUnit unit) {
                 log.warn("boss group is null");
             }
 
-            if (log.isInfoEnabled()) {
-                log.info("server shut down");
-            }
+            log.info("server shut down");
         };
     }
 }

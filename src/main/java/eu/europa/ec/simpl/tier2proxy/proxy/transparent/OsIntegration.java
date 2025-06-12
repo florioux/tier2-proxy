@@ -42,7 +42,8 @@ final class OsIntegration {
         int port = Short.toUnsignedInt(buffer.order(ByteOrder.BIG_ENDIAN).getShort(2));
 
         byte[] ipBytes = new byte[4];
-        buffer.order(ByteOrder.nativeOrder()).position(4); // native order for IP addr
+        // native order for IP addr
+        buffer.order(ByteOrder.nativeOrder()).position(4);
         buffer.get(ipBytes);
 
         return new InetSocketAddress(InetAddress.getByAddress(ipBytes), port);
