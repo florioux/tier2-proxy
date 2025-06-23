@@ -99,7 +99,6 @@ public final class TLS {
         return Optional.empty();
     }
 
-
     private static TrustManagerFactory getSystemTrustManagers() throws NoSuchAlgorithmException, KeyStoreException {
         TrustManagerFactory trustManagerFactory =
                 TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
