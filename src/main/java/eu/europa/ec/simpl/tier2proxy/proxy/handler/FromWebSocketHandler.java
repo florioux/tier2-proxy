@@ -22,8 +22,8 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
     private final Addr dest;
     private final Channel source;
     private final SslContext tlsClientContext;
-    private final ChannelHandler httpClientCodec = new HttpClientCodec(),
-            httpObjectAggregator = new HttpObjectAggregator(65536);
+    private final ChannelHandler httpClientCodec = new HttpClientCodec();
+    private final ChannelHandler httpObjectAggregator = new HttpObjectAggregator(65536);
 
     FromWebSocketHandler(Addr dest, Channel source, boolean isTLS) {
         this.dest = dest;
@@ -37,7 +37,6 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
                 throw new IllegalStateException("client ssl context cannot be initialized", e);
             }
         } else {
-
             this.tlsClientContext = null;
         }
     }
@@ -120,7 +119,7 @@ final class FromWebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
         if (pipeline.get(HttpObjectAggregator.class.getCanonicalName()) != null) {
             pipeline.remove(HttpObjectAggregator.class.getCanonicalName());
-        } else if (log.isDebugEnabled()) {
+        } else {
             log.debug("http object aggregator already removed");
         }
     }
