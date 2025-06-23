@@ -58,8 +58,7 @@ public final class MitmHandler extends SimpleChannelInboundHandler<FullHttpReque
 
             SSLEngine sslEngine = this.tlsServerContext.newEngine(ctx.channel().alloc());
             pipeline.addBefore(ctx.name(), SslHandler.class.getCanonicalName(), new SslHandler(sslEngine));
-        } else if (log.isDebugEnabled()) {
-
+        } else {
             log.debug("handling server plaintext connection for {}", this.dest);
         }
 

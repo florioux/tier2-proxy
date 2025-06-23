@@ -111,6 +111,8 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
 
         private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
         private static final Pattern CONNECT_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
+        public static final int HTTPS_PORT = 443;
+        public static final int HTTP_PORT = 80;
 
         private final String scheme;
         private final String host;
@@ -128,7 +130,7 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
 
         private static int resolvePort(String scheme, String port) {
             if (StringUtil.isNullOrEmpty(port)) {
-                return "https".equals(scheme) ? 443 : 80;
+                return "https".equals(scheme) ? HTTPS_PORT : HTTP_PORT;
             }
             return Integer.parseInt(port);
         }

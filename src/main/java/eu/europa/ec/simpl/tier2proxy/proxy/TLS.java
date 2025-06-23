@@ -19,6 +19,18 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class TLS {
+
+    private static final TrustManagerFactory trustManagersFactory;
+
+    static {
+        /*try {
+            trustManagersFactory = getSystemTrustManagers();
+        } catch(NoSuchAlgorithmException | KeyStoreException e) {
+            throw new RuntimeException(e);
+        }*/
+        trustManagersFactory = InsecureTrustManagerFactory.INSTANCE; // TODO remove this!
+    }
+
     public static SslContext getClientSslContext() throws SSLException {
         log.debug("Creating client TLS context");
         return SslContextBuilder.forClient()
@@ -87,16 +99,6 @@ public final class TLS {
         return Optional.empty();
     }
 
-    private static final TrustManagerFactory trustManagersFactory;
-
-    static {
-        /*try {
-            trustManagersFactory = getSystemTrustManagers();
-        } catch(NoSuchAlgorithmException | KeyStoreException e) {
-            throw new RuntimeException(e);
-        }*/
-        trustManagersFactory = InsecureTrustManagerFactory.INSTANCE; // TODO remove this!
-    }
 
     private static TrustManagerFactory getSystemTrustManagers() throws NoSuchAlgorithmException, KeyStoreException {
         TrustManagerFactory trustManagerFactory =
