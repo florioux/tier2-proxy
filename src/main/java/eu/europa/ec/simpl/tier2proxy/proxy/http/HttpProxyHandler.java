@@ -14,16 +14,12 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.StringUtil;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
-    private final HandlerInPipeline<ChannelHandler, ChannelHandler> httpServerCodec, httpObjectAggregator;
+    private final HandlerInPipeline<ChannelHandler, ChannelHandler> httpServerCodec;
+    private final HandlerInPipeline<ChannelHandler, ChannelHandler> httpObjectAggregator;
     private final HttpProtocolServerOptions httpProtocolServerOptions;
     private final Certificates certificates;
 
@@ -104,61 +100,5 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
         ctx.pipeline()
                 .replace(this, mitmHandler.handlerName(), mitmHandler.handler())
                 .fireChannelRead(ReferenceCountUtil.retain(request));
-    }
-
-    @Getter
-    static final class FullPath {
-
-        private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
-        private static final Pattern CONNECT_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
-        public static final int HTTPS_PORT = 443;
-        public static final int HTTP_PORT = 80;
-
-        private final String scheme;
-        private final String host;
-        private final int port;
-        private final String path;
-
-        static Addr resolveAddrInConnect(String addr) {
-            Matcher matcher = CONNECT_ADDR_PATTERN.matcher(addr);
-            if (matcher.find()) {
-                return new Addr(matcher.group(1), Integer.parseInt(matcher.group(2)));
-            } else {
-                throw new IllegalStateException("Illegal tunnel addr: " + addr);
-            }
-        }
-
-        private static int resolvePort(String scheme, String port) {
-            if (StringUtil.isNullOrEmpty(port)) {
-                return "https".equals(scheme) ? HTTPS_PORT : HTTP_PORT;
-            }
-            return Integer.parseInt(port);
-        }
-
-        FullPath(String fullPath) {
-            var matcher = PATH_PATTERN.matcher(fullPath);
-            if (matcher.find()) {
-                var i = new AtomicInteger(0);
-                this.scheme = matcher.group(i.incrementAndGet());
-                this.host = matcher.group(i.incrementAndGet());
-                this.port = resolvePort(scheme, matcher.group(i.incrementAndGet()));
-                this.path = matcher.group(i.incrementAndGet());
-            } else {
-                throw new IllegalStateException("Illegal http proxy path: " + fullPath);
-            }
-        }
-
-        Addr toAddr() {
-            return new Addr(this.host, this.port);
-        }
-
-        @Override
-        public String toString() {
-            return "FullPath{" + "scheme='"
-                    + scheme + '\'' + ", host='"
-                    + host + '\'' + ", port="
-                    + port + ", path='"
-                    + path + '\'' + '}';
-        }
     }
 }

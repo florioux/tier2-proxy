@@ -70,7 +70,7 @@ public final class Certificates {
     }
 
     public static byte[] toPem(Object object) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        var outputStream = new ByteArrayOutputStream();
 
         try (var writer = new JcaPEMWriter(new OutputStreamWriter(outputStream))) {
             writer.writeObject(object);
@@ -80,11 +80,11 @@ public final class Certificates {
     }
 
     public static PrivateKey privateKeyFromPem(byte[] privateKeyBytes) throws IOException {
-        try (PEMParser pemParser = new PEMParser(new InputStreamReader(new ByteArrayInputStream(privateKeyBytes)))) {
+        try (var pemParser = new PEMParser(new InputStreamReader(new ByteArrayInputStream(privateKeyBytes)))) {
 
-            Object object = pemParser.readObject();
+            var object = pemParser.readObject();
             if (object instanceof PEMKeyPair keypair) {
-                JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+                var converter = new JcaPEMKeyConverter();
                 var kp = converter.getKeyPair(keypair);
 
                 return kp.getPrivate();
@@ -98,8 +98,8 @@ public final class Certificates {
     }
 
     public static X509Certificate certificateFromPem(byte[] certBytes) throws CertificateException {
-        java.security.cert.CertificateFactory certFactory = java.security.cert.CertificateFactory.getInstance("X.509");
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(certBytes)) {
+        var certFactory = java.security.cert.CertificateFactory.getInstance("X.509");
+        try (var inputStream = new ByteArrayInputStream(certBytes)) {
             return (X509Certificate) certFactory.generateCertificate(inputStream);
         } catch (IOException exception) {
             throw new CertificateException(exception);

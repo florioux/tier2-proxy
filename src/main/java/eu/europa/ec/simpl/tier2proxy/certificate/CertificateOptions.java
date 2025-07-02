@@ -11,6 +11,8 @@ import lombok.NonNull;
 import org.bouncycastle.asn1.x500.X500Name;
 
 public record CertificateOptions(
+        CaEndpoint endpoint,
+        String location,
         X500Name caSubject,
         PrivateKey privateKey,
         String signatureAlgo,

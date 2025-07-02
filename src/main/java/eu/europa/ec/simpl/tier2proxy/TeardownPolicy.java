@@ -2,37 +2,37 @@ package eu.europa.ec.simpl.tier2proxy;
 
 import io.netty.channel.EventLoopGroup;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public record TeardownPolicy(int quietPeriod, int timeout, TimeUnit unit) {
-    private static final Logger log = LoggerFactory.getLogger(TeardownPolicy.class);
 
     static Runnable tearDownJob(TeardownPolicy teardownPolicy, EventLoopGroup bossGroup, Server... servers) {
-        return () -> {
-            log.info("stopping server");
+        return () -> doTearDown(teardownPolicy, bossGroup, servers);
+    }
 
-            if (servers != null) {
-                for (var aServer : servers) {
-                    if (aServer != null) {
-                        log.info("stopping server {}", aServer.name());
+    private static void doTearDown(TeardownPolicy teardownPolicy, EventLoopGroup bossGroup, Server... servers) {
+        log.info("stopping server");
 
-                        aServer.stop(teardownPolicy.quietPeriod(), teardownPolicy.timeout(), teardownPolicy.unit());
-                        log.info("stopped server {}", aServer.name());
-                    }
+        if (servers != null) {
+            for (var aServer : servers) {
+                if (aServer != null) {
+                    log.info("stopping server {}", aServer.name());
+
+                    aServer.stop(teardownPolicy.quietPeriod(), teardownPolicy.timeout(), teardownPolicy.unit());
+                    log.info("stopped server {}", aServer.name());
                 }
-            } else if (log.isWarnEnabled()) {
-                log.warn("no server to stop");
             }
+        } else {
+            log.warn("no server to stop");
+        }
 
-            if (bossGroup != null) {
-                bossGroup.shutdownGracefully(
-                        teardownPolicy.quietPeriod(), teardownPolicy.timeout(), teardownPolicy.unit());
-            } else if (log.isWarnEnabled()) {
-                log.warn("boss group is null");
-            }
+        if (bossGroup != null) {
+            bossGroup.shutdownGracefully(teardownPolicy.quietPeriod(), teardownPolicy.timeout(), teardownPolicy.unit());
+        } else {
+            log.warn("boss group is null");
+        }
 
-            log.info("server shut down");
-        };
+        log.info("server shut down");
     }
 }

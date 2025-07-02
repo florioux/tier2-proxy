@@ -7,26 +7,29 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
 public final class TrafficHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    public static final int EXPECTED_FIRST_TLS_BYTE = 0x16;
+    public static final int EXPECTED_SECOND_TLS_BYTE = 0x03;
+
     private final Certificates certificates;
     private final Addr dest;
     private final int httpObjectAggregatorMaxContentLength;
 
     private static boolean isTLS(ByteBuf msg) {
-        int firstByte = msg.getUnsignedByte(0);
-        int secondByte = msg.getUnsignedByte(1);
+        var i = new AtomicInteger();
+        var firstByte = msg.getUnsignedByte(i.getAndIncrement());
+        var secondByte = msg.getUnsignedByte(i.get());
 
-        return firstByte == 0x16 && secondByte == 0x03;
+        return firstByte == EXPECTED_FIRST_TLS_BYTE && secondByte == EXPECTED_SECOND_TLS_BYTE;
     }
 
     @Override
@@ -35,13 +38,13 @@ public final class TrafficHandler extends SimpleChannelInboundHandler<ByteBuf> {
         var messageCopy = msg.copy();
 
         if (isTLS(messageCopy)) {
-            Optional<String> sni = TLS.extractSNI(messageCopy);
+            var sni = TLS.extractSNI(messageCopy);
 
             if (sni.isEmpty()) {
                 throw new IllegalStateException("SNI must be present");
             }
 
-            Addr newDest = new Addr(sni.get(), this.dest.port());
+            var newDest = new Addr(sni.get(), this.dest.port());
 
             ctx.pipeline()
                     .replace(
@@ -50,13 +53,15 @@ public final class TrafficHandler extends SimpleChannelInboundHandler<ByteBuf> {
                             new MitmHandler(this.certificates, newDest, this.httpObjectAggregatorMaxContentLength))
                     .fireChannelRead(ReferenceCountUtil.retain(msg));
         } else {
-            EmbeddedChannel em = new EmbeddedChannel();
+            var em = new EmbeddedChannel();
 
-            em.pipeline().addFirst(new HttpServerCodec(), new HttpObjectAggregator(65536));
+            em.pipeline()
+                    .addFirst(
+                            new HttpServerCodec(), new HttpObjectAggregator(this.httpObjectAggregatorMaxContentLength));
 
             em.writeInbound(ReferenceCountUtil.retain(msg));
 
-            FullHttpRequest request = em.readInbound();
+            var request = em.readInbound();
 
             ctx.pipeline()
                     .replace(

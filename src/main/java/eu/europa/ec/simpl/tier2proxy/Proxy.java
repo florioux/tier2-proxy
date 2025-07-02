@@ -1,103 +1,88 @@
 package eu.europa.ec.simpl.tier2proxy;
 
-import eu.europa.ec.simpl.tier2proxy.certificate.CertificateInfo;
-import eu.europa.ec.simpl.tier2proxy.certificate.CertificateOptions;
+import eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient;
+import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.impl.FileSystemCertificateAuthorityImpl;
 import eu.europa.ec.simpl.tier2proxy.certificate.http.CertificateServer;
-import eu.europa.ec.simpl.tier2proxy.certificate.http.CertificateServerOptions;
+import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpProtocolProxyServer;
-import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpProtocolServerOptions;
 import eu.europa.ec.simpl.tier2proxy.proxy.socks.SocksProtocolProxyServer;
-import eu.europa.ec.simpl.tier2proxy.proxy.socks.SocksProtocolServerOptions;
-import eu.europa.ec.simpl.tier2proxy.proxy.transparent.TransparentProxyServer;
-import eu.europa.ec.simpl.tier2proxy.proxy.transparent.TransparentProxyServerOptions;
-import io.netty.channel.ChannelFuture;
+import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.DefaultEventLoop;
 import io.netty.channel.EventLoopGroup;
-import io.netty.handler.codec.http.HttpMethod;
 import io.netty.util.concurrent.EventExecutor;
-import io.netty.util.concurrent.Promise;
 import io.netty.util.concurrent.PromiseCombiner;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.spec.ECGenParameterSpec;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.asn1.x500.X500Name;
 
 @Slf4j
 public final class Proxy {
+
+    private static final Configuration configuration = Configuration.getInstance();
+
     public static void main(String[] args) {
         log.info("starting");
-        OsType osType = OsType.fromOS();
-        ProxyOptions proxyOptions = new ProxyOptions(1);
-        TeardownPolicy teardownPolicy = new TeardownPolicy(2, 10, TimeUnit.SECONDS);
 
-        CertificateOptions options = defaultCertificateOptions();
-        CertificateAuthorityRepository certificateAuthorityRepository = fsCertificateAuthorityRepository();
-
-        CertificateServerOptions certificateServerOptions = defaultCertificateServerOptions();
-        HttpProtocolServerOptions httpProtocolServerOptions = defaultHttpProtocolServerOptions();
-        SocksProtocolServerOptions socksProtocolServerOptions = defaultSocksProtocolServerOptions();
-        TransparentProxyServerOptions transparentProxyServerOptions = defaultTransparentProxyServerOptions();
+        var certificateAuthorityRepository = fsCertificateAuthorityRepository();
 
         Certificates certificates;
         try {
-            certificates = new Certificates(options, certificateAuthorityRepository);
+            certificates = new Certificates(
+                    configuration.getCertificateServerOptions().certificateOptions(), certificateAuthorityRepository);
         } catch (NoSuchAlgorithmException e) {
             log.error(
                     "error initializing dynamic certificate authority with options {} and repository {}",
-                    options,
+                    configuration.getCertificateServerOptions().certificateOptions(),
                     certificateAuthorityRepository,
                     e);
             System.exit(1);
             return;
         }
 
-        CertificateInfo caCertificateInfo = certificates.getCaCertificate();
+        var caCertificateInfo = certificates.getCaCertificate();
         log.debug("certificate authority {}", caCertificateInfo);
 
         var caCertificate = caCertificateInfo.certificate();
         try (EventExecutor executor = new DefaultEventLoop()) {
-            EventLoopGroup bossGroup = osType.bossGroup(proxyOptions.threadNum(), executor);
+            var osType = OsType.fromOS();
+            EventLoopGroup bossGroup =
+                    osType.bossGroup(configuration.getProxyOptions().threadNum(), executor);
 
-            CertificateServer caServer =
-                    new CertificateServer(osType, bossGroup, certificateServerOptions, caCertificate);
-            Server httpProtocolProxyServer =
-                    new HttpProtocolProxyServer(osType, bossGroup, httpProtocolServerOptions, certificates);
-            Server socksProtocolProxyServer =
-                    new SocksProtocolProxyServer(osType, bossGroup, socksProtocolServerOptions, certificates);
-            Server transparentProxyServer =
-                    new TransparentProxyServer(osType, bossGroup, transparentProxyServerOptions, certificates);
+            var bootstrap = osType.clientBootstrapSupplier(bossGroup);
 
-            ChannelFuture caFuture = caServer.start();
-            ChannelFuture httpProtocolFuture = httpProtocolProxyServer.start();
-            ChannelFuture socksProtocolFuture = socksProtocolProxyServer.start();
-            ChannelFuture transparentFuture = transparentProxyServer.start();
+            initializeSimplCredentials(bootstrap);
 
-            Runnable tearDownJob = TeardownPolicy.tearDownJob(
-                    teardownPolicy,
+            var caServer = new CertificateServer(
+                    osType, bossGroup, configuration.getCertificateServerOptions(), caCertificate);
+            var httpProtocolProxyServer = new HttpProtocolProxyServer(
+                    osType, bossGroup, configuration.getHttpProtocolServerOptions(), certificates);
+            var socksProtocolProxyServer = new SocksProtocolProxyServer(
+                    osType, bossGroup, configuration.getSocksProtocolServerOptions(), certificates);
+
+            var caFuture = caServer.start();
+            var httpProtocolFuture = httpProtocolProxyServer.start();
+            var socksProtocolFuture = socksProtocolProxyServer.start();
+
+            var tearDownJob = TeardownPolicy.tearDownJob(
+                    configuration.getTeardownPolicy(),
                     bossGroup,
                     caServer,
                     httpProtocolProxyServer,
-                    socksProtocolProxyServer,
-                    transparentProxyServer);
-            Thread tearDownPolicy = new Thread(tearDownJob);
+                    socksProtocolProxyServer);
+            var tearDownPolicy = new Thread(tearDownJob);
             Runtime.getRuntime().addShutdownHook(tearDownPolicy);
 
-            Promise<Void> endingPromise = executor.<Void>newPromise();
-            PromiseCombiner all = new PromiseCombiner(executor);
+            var endingPromise = executor.<Void>newPromise();
+            var all = new PromiseCombiner(executor);
             all.finish(endingPromise);
 
             all.add(caFuture);
             all.add(httpProtocolFuture);
             all.add(socksProtocolFuture);
-            all.add(transparentFuture);
 
             endingPromise.sync();
         } catch (InterruptedException e) {
@@ -109,43 +94,23 @@ public final class Proxy {
         System.exit(0);
     }
 
-    private static TransparentProxyServerOptions defaultTransparentProxyServerOptions() {
-        return new TransparentProxyServerOptions(new ServerConfig("0.0.0.0", 3003), 65536);
-    }
+    private static void initializeSimplCredentials(Bootstrap bootstrap) {
+        var authProviderClient = new AuthProviderClient(bootstrap);
 
-    private static SocksProtocolServerOptions defaultSocksProtocolServerOptions() {
-        return new SocksProtocolServerOptions(new ServerConfig("0.0.0.0", 3002), 65536);
-    }
-
-    private static HttpProtocolServerOptions defaultHttpProtocolServerOptions() {
-        return new HttpProtocolServerOptions(new ServerConfig("0.0.0.0", 3001), 65536);
-    }
-
-    private static CertificateServerOptions defaultCertificateServerOptions() {
-        return new CertificateServerOptions(new ServerConfig("0.0.0.0", 3000), 65536, HttpMethod.GET, "/cert");
+        CredentialHolder.getInstance()
+                .initCredentials(
+                        authProviderClient.getCredential(),
+                        authProviderClient.getInstalledKeypair().getPrivateKey());
     }
 
     private static CertificateAuthorityRepository fsCertificateAuthorityRepository() {
         try {
-            return new FileSystemCertificateAuthorityImpl(Path.of("_managed_ca"));
+            return new FileSystemCertificateAuthorityImpl(Path.of(configuration
+                    .getCertificateServerOptions()
+                    .certificateOptions()
+                    .location()));
         } catch (IOException e) {
             throw new IllegalStateException("error while loading certificate authority repository", e);
         }
-    }
-
-    private static CertificateOptions defaultCertificateOptions() {
-        X500Name x500NameConf = new X500Name("C=EU, ST=IT, L=Rome, O=Mitm Proxy, OU=Mitm Proxy, CN=Mitm Proxy CA");
-        CertificateOptions.PrivateKey privateKeyConf =
-                new CertificateOptions.PrivateKey("ECDSA", new ECGenParameterSpec("secp521r1"), new SecureRandom());
-        String signatureAlgoConf = "SHA256withECDSA";
-
-        CertificateOptions.CertificateCache certificateCacheConf =
-                new CertificateOptions.CertificateCache(2_000, 1, TimeUnit.DAYS);
-
-        CertificateOptions.CertificateValidity certificateValidityConf =
-                new CertificateOptions.CertificateValidity(6, 1_000, ChronoUnit.MONTHS, ChronoUnit.YEARS);
-
-        return new CertificateOptions(
-                x500NameConf, privateKeyConf, signatureAlgoConf, certificateCacheConf, certificateValidityConf);
     }
 }
