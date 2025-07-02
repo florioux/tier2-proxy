@@ -94,7 +94,7 @@ public final class Proxy {
         System.exit(0);
     }
 
-    private static void initializeSimplCredentials(Bootstrap bootstrap) {
+    private static void initializeSimplCredentials(Bootstrap bootstrap) throws InterruptedException {
         var authProviderClient = new AuthProviderClient(bootstrap);
 
         CredentialHolder.getInstance()

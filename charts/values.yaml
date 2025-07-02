@@ -96,8 +96,6 @@ env:
     value: "{{- .Values.server.http.port }}"
   - name: PROXY_SOCKS_SERVER_PORT
     value: "{{- .Values.server.socks.port }}"
-  - name: CERTS_FOLDER
-    value: "/etc/certs"
   - name: SIMPL_AUTHENTICATION_PROVIDER_BASEURL
     value: "http://authentication-provider.{{ .Release.Namespace }}.svc.cluster.local:8080"
 
