@@ -1,13 +1,17 @@
 package eu.europa.ec.simpl.tier2proxy;
 
+import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import java.util.Locale;
 import java.util.concurrent.Executor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,7 +29,7 @@ public enum OsType {
     }
 
     EventLoopGroup bossGroup(int threadNum, Executor executor) {
-        if (this.equals(LINUX)) {
+        if (this == LINUX) {
             return new EpollEventLoopGroup(threadNum, executor);
         }
 
@@ -33,15 +37,25 @@ public enum OsType {
     }
 
     public EventLoopGroup eventLoopGroupSupplier() {
-        if (this.equals(LINUX)) {
+        if (this == LINUX) {
             return new EpollEventLoopGroup();
         }
 
         return new NioEventLoopGroup();
     }
 
+    public Bootstrap clientBootstrapSupplier(EventLoopGroup group) {
+        var bootstrap = new Bootstrap().group(group);
+
+        if (this == LINUX) {
+            return bootstrap.channel(EpollSocketChannel.class);
+        }
+
+        return bootstrap.channel(NioSocketChannel.class);
+    }
+
     public ServerBootstrap serverBootstrapSupplier(boolean isTransparent) {
-        if (this.equals(LINUX)) {
+        if (this == LINUX) {
             ServerBootstrap toReturn = new ServerBootstrap()
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     .channel(EpollServerSocketChannel.class)
@@ -69,7 +83,7 @@ public enum OsType {
 
     private static OsType fromStr(String type) {
         if (type != null) {
-            String lowerCasedType = type.toLowerCase();
+            String lowerCasedType = type.toLowerCase(Locale.getDefault());
             if (lowerCasedType.startsWith(LINUX.type)) {
                 return LINUX;
             } else if (lowerCasedType.startsWith(WINDOWS.type)) {

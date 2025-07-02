@@ -20,7 +20,8 @@
 		<bouncycastle.version>1.80</bouncycastle.version>
 		<caffeine.version>3.2.0</caffeine.version>
 		<jna.version>5.16.0</jna.version>
-
+		<common.version>2.1.0</common.version>
+		<simpl-http-client.version>2.1.0</simpl-http-client.version>
 		<spotless.version>2.43.0</spotless.version>
 	</properties>
 
@@ -63,6 +64,46 @@
 			<version>${jna.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.11.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.qameta.allure</groupId>
+			<artifactId>allure-junit5</artifactId>
+			<version>2.29.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-junit-jupiter</artifactId>
+			<version>5.13.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.assertj</groupId>
+			<artifactId>assertj-core</artifactId>
+			<version>3.27.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>uk.org.webcompere</groupId>
+			<artifactId>system-stubs-jupiter</artifactId>
+			<version>2.1.6</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.17.1</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.simpl</groupId>
+			<artifactId>certificate-revocation-common</artifactId>
+			<version>2.1.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -157,4 +198,15 @@
 		</plugins>
 
 	</build>
+
+	<repositories>
+		<repository>
+			<id>common-maven</id>
+			<url>https://code.europa.eu/api/v4/projects/796/packages/maven</url>
+		</repository>
+		<repository>
+			<id>http-client-maven</id>
+			<url>https://code.europa.eu/api/v4/projects/859/packages/maven</url>
+		</repository>
+	</repositories>
 </project>

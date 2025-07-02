@@ -27,8 +27,7 @@ final class CertificateServerHandlerInitializer extends ChannelInitializer<Socke
                 caCertificate.getSubjectX500Principal(),
                 ch.remoteAddress());
 
-        CertificateServerHandler handler =
-                new CertificateServerHandler(this.certificateServerOptions, this.caCertificate);
+        var handler = new CertificateServerHandler(this.certificateServerOptions, this.caCertificate);
         ch.pipeline().replace(this, CertificateServerHandler.class.getCanonicalName(), handler);
     }
 }

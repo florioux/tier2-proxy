@@ -29,10 +29,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private final byte[] certificate;
-    private final ChannelHandler httpServerCodec,
-            httpObjectAggregator,
-            httpContentCompressor,
-            httpServerExpectContinueHandler;
+    private final ChannelHandler httpServerCodec;
+    private final ChannelHandler httpObjectAggregator;
+    private final ChannelHandler httpContentCompressor;
+    private final ChannelHandler httpServerExpectContinueHandler;
 
     private final HttpMethod caServingEndpointMethod;
     private final String caServingEndpointUri;
@@ -54,7 +54,8 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
         this.httpServerExpectContinueHandler = new HttpServerExpectContinueHandler();
 
         this.caServingEndpointMethod = certificateServerOptions.caServingEndpointMethod();
-        this.caServingEndpointUri = certificateServerOptions.caServingEndpointUri();
+        this.caServingEndpointUri =
+                certificateServerOptions.certificateOptions().endpoint().uri();
     }
 
     @Override

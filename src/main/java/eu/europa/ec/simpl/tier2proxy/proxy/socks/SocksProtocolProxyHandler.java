@@ -77,36 +77,10 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
         this.socksVersion = socksMessage.version();
         switch (this.socksVersion) {
             case SOCKS4a:
-                log.info("socks4 request: {}", socksMessage);
-                Socks4CommandRequest socksV4CmdRequest = (Socks4CommandRequest) socksMessage;
-                if (socksV4CmdRequest.type() == Socks4CommandType.CONNECT) {
-                    onSocksSuccess(ctx, socksV4CmdRequest);
-                } else {
-                    ctx.close();
-                }
+                manageSocks4(ctx, socksMessage);
                 break;
             case SOCKS5:
-                switch (socksMessage) {
-                    case Socks5InitialRequest socks5InitialRequest -> {
-                        log.info("socks5 initial request: {}", socks5InitialRequest);
-                        ctx.pipeline().addFirst(new Socks5CommandRequestDecoder());
-                        ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
-                    }
-                    case Socks5PasswordAuthRequest socks5PasswordAuthRequest -> {
-                        log.info("socks password authentication request: {}", socks5PasswordAuthRequest);
-                        ctx.pipeline().addFirst(new Socks5CommandRequestDecoder());
-                        ctx.writeAndFlush(new DefaultSocks5PasswordAuthResponse(Socks5PasswordAuthStatus.SUCCESS));
-                    }
-                    case Socks5CommandRequest socks5CmdRequest -> {
-                        log.info("sock5 command request: {}", socks5CmdRequest);
-                        if (socks5CmdRequest.type() == Socks5CommandType.CONNECT) {
-                            onSocksSuccess(ctx, socks5CmdRequest);
-                        } else {
-                            ctx.close();
-                        }
-                    }
-                    default -> ctx.close();
-                }
+                manageSocks5(ctx, socksMessage);
                 break;
             case UNKNOWN:
                 ctx.close();
@@ -114,8 +88,50 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
         }
     }
 
+    private void manageSocks4(ChannelHandlerContext ctx, SocksMessage socksMessage) {
+        log.info("socks4 request: {}", socksMessage);
+        Socks4CommandRequest socksV4CmdRequest = (Socks4CommandRequest) socksMessage;
+        if (socksV4CmdRequest.type() == Socks4CommandType.CONNECT) {
+            onSocksSuccess(ctx, socksV4CmdRequest);
+        } else {
+            ctx.close();
+        }
+    }
+
+    private void manageSocks5(ChannelHandlerContext ctx, SocksMessage socksMessage) {
+        switch (socksMessage) {
+            case Socks5InitialRequest request -> manageSocks5InitialRequest(ctx, request);
+            case Socks5PasswordAuthRequest request -> manageSocks5PasswordAuthRequest(ctx, request);
+            case Socks5CommandRequest request -> manageSocks5CommandRequest(ctx, request);
+            default -> ctx.close();
+        }
+    }
+
+    private void manageSocks5CommandRequest(ChannelHandlerContext ctx, Socks5CommandRequest socks5CmdRequest) {
+        log.info("sock5 command request: {}", socks5CmdRequest);
+        if (socks5CmdRequest.type() == Socks5CommandType.CONNECT) {
+            onSocksSuccess(ctx, socks5CmdRequest);
+        } else {
+            ctx.close();
+        }
+    }
+
+    private static void manageSocks5PasswordAuthRequest(
+            ChannelHandlerContext ctx, Socks5PasswordAuthRequest socks5PasswordAuthRequest) {
+        log.info("socks password authentication request: {}", socks5PasswordAuthRequest);
+        ctx.pipeline().addFirst(new Socks5CommandRequestDecoder());
+        ctx.writeAndFlush(new DefaultSocks5PasswordAuthResponse(Socks5PasswordAuthStatus.SUCCESS));
+    }
+
+    private static void manageSocks5InitialRequest(
+            ChannelHandlerContext ctx, Socks5InitialRequest socks5InitialRequest) {
+        log.info("socks5 initial request: {}", socks5InitialRequest);
+        ctx.pipeline().addFirst(new Socks5CommandRequestDecoder());
+        ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
+    }
+
     private void onSocksSuccess(ChannelHandlerContext ctx, Socks4CommandRequest request) {
-        Addr dest = new Addr(request.dstAddr(), request.dstPort());
+        var dest = new Addr(request.dstAddr(), request.dstPort());
 
         ctx.writeAndFlush(
                 new DefaultSocks4CommandResponse(Socks4CommandStatus.SUCCESS, request.dstAddr(), request.dstPort()));
@@ -124,7 +140,7 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
     }
 
     private void onSocksSuccess(ChannelHandlerContext ctx, Socks5CommandRequest request) {
-        Addr dest = new Addr(request.dstAddr(), request.dstPort());
+        var dest = new Addr(request.dstAddr(), request.dstPort());
 
         ctx.writeAndFlush(new DefaultSocks5CommandResponse(
                 Socks5CommandStatus.SUCCESS, request.dstAddrType(), request.dstAddr(), request.dstPort()));
@@ -133,7 +149,7 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
     }
 
     private void onServerConnected(ChannelHandlerContext ctx, Addr dest) {
-        TrafficHandler handler = new TrafficHandler(
+        var handler = new TrafficHandler(
                 this.certificates, dest, this.socksProtocolServerOptions.httpObjectAggregatorMaxContentLength());
 
         ctx.pipeline().replace(this, TrafficHandler.class.getCanonicalName(), handler);

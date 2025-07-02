@@ -34,19 +34,18 @@ public final class FileSystemCertificateAuthorityImpl implements CertificateAuth
             throw new NoSuchElementException(host + " certificate not found (folder is missing)");
         }
 
-        var certificatePem = certificateSubFolder.resolve("certificate.pem");
-        var privateKeyPem = certificateSubFolder.resolve("private-key.pem");
-
         X509Certificate certificate;
-        PrivateKey privateKey;
         try {
+            var certificatePem = certificateSubFolder.resolve("certificate.pem");
             var bytes = Files.readAllBytes(certificatePem);
             certificate = Certificates.certificateFromPem(bytes);
         } catch (IOException | CertificateException e) {
             throw new NoSuchElementException(host + " certificate not found (certificate pem file)", e);
         }
 
+        PrivateKey privateKey;
         try {
+            var privateKeyPem = certificateSubFolder.resolve("private-key.pem");
             var bytes = Files.readAllBytes(privateKeyPem);
 
             privateKey = Certificates.privateKeyFromPem(bytes);
