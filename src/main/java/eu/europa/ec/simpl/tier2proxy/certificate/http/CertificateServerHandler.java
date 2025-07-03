@@ -48,8 +48,8 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
         this.certificate = Certificates.toPem(certificate);
 
         this.httpServerCodec = new HttpServerCodec();
-        this.httpObjectAggregator = new HttpObjectAggregator(
-                certificateServerOptions.httpObjectAggregatorMaxContentLength()); // TODO config
+        this.httpObjectAggregator =
+                new HttpObjectAggregator(certificateServerOptions.httpObjectAggregatorMaxContentLength());
         this.httpContentCompressor = new HttpContentCompressor((CompressionOptions[]) null);
         this.httpServerExpectContinueHandler = new HttpServerExpectContinueHandler();
 
