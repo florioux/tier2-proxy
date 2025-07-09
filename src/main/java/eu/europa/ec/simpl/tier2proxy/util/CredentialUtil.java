@@ -3,6 +3,7 @@ package eu.europa.ec.simpl.tier2proxy.util;
 import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyStore;
@@ -72,7 +73,7 @@ public class CredentialUtil {
 
     private static void verifyPrivateKeyMatchesCertificateChain(PrivateKey privateKey, X509Certificate certificate)
             throws SignatureException, NoSuchAlgorithmException, InvalidKeyException {
-        byte[] testData = "test".getBytes();
+        byte[] testData = "test".getBytes(Charset.defaultCharset());
 
         Signature signature = Signature.getInstance(certificate.getSigAlgName());
         signature.initSign(privateKey);

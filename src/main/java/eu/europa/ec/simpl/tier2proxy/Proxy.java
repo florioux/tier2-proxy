@@ -87,6 +87,7 @@ public final class Proxy {
             endingPromise.sync();
         } catch (InterruptedException e) {
             log.error("proxy is interrupted", e);
+            Thread.currentThread().interrupt();
             System.exit(1);
             return;
         }
@@ -94,7 +95,7 @@ public final class Proxy {
         System.exit(0);
     }
 
-    private static void initializeSimplCredentials(Bootstrap bootstrap) throws InterruptedException {
+    private static void initializeSimplCredentials(Bootstrap bootstrap) {
         var authProviderClient = new AuthProviderClient(bootstrap);
 
         CredentialHolder.getInstance()

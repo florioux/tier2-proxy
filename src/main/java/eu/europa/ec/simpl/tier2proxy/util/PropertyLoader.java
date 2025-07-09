@@ -1,8 +1,9 @@
 package eu.europa.ec.simpl.tier2proxy.util;
 
 import io.netty.util.internal.StringUtil;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
@@ -37,7 +38,7 @@ public class PropertyLoader {
 
         var props = new Properties();
 
-        try (var fis = new FileInputStream(filePath)) {
+        try (var fis = Files.newInputStream(Paths.get(filePath))) {
             props.load(fis);
             resolveProperties(props);
         } catch (IOException e) {
