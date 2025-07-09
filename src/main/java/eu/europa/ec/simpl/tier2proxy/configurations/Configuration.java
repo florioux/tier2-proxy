@@ -26,9 +26,6 @@ public final class Configuration {
     private static final String AGGREGATOR_MAX_LENGTH = "65536";
 
     @Getter(value = AccessLevel.NONE)
-    private static Configuration instance;
-
-    @Getter(value = AccessLevel.NONE)
     private static final Properties properties;
 
     static {
@@ -165,9 +162,10 @@ public final class Configuration {
     }
 
     public static Configuration getInstance() {
-        if (instance == null) {
-            instance = new Configuration();
-        }
-        return instance;
+        return ConfigurationInstanceHolder.INSTANCE;
+    }
+
+    private static class ConfigurationInstanceHolder {
+        private static final Configuration INSTANCE = new Configuration();
     }
 }
