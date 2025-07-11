@@ -1,16 +1,23 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.CertificateInfo;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
+import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
 import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.security.PrivateKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,5 +102,103 @@ class MitmHandlerTest {
         verify(pipeline, never()).remove(SslHandler.class);
         verify(pipeline).get("io.netty.handler.codec.http.HttpServerCodec");
         verify(pipeline).get("io.netty.handler.codec.http.HttpObjectAggregator");
+    }
+
+    @Test
+    void testInitChannelWithWebsocket() {
+        var dest = mock(Addr.class);
+        var source = mock(Channel.class);
+        var ch = mock(io.netty.channel.socket.SocketChannel.class);
+        var pipeline = mock(ChannelPipeline.class);
+        when(ch.pipeline()).thenReturn(pipeline);
+        when(pipeline.replace(any(ChannelHandler.class), anyString(), any())).thenReturn(pipeline);
+
+        var initializer = new MitmHandler.OutboundChannelInitializer(dest, source, true, ConnectionType.HTTP);
+        initializer.initChannel(ch);
+
+        verify(pipeline).replace(eq(initializer), eq(FromWebSocketHandler.class.getCanonicalName()), any());
+    }
+
+    @Test
+    void testInitChannelWithHttp() {
+        var dest = mock(Addr.class);
+        var source = mock(Channel.class);
+        var ch = mock(io.netty.channel.socket.SocketChannel.class);
+        var pipeline = mock(ChannelPipeline.class);
+        when(ch.pipeline()).thenReturn(pipeline);
+        when(pipeline.replace(any(ChannelHandler.class), anyString(), any())).thenReturn(pipeline);
+
+        var initializer = new MitmHandler.OutboundChannelInitializer(dest, source, false, ConnectionType.HTTP);
+        initializer.initChannel(ch);
+
+        verify(pipeline).replace(eq(initializer), eq(FromHTTPHandler.class.getCanonicalName()), any());
+    }
+
+    @Test
+    void testIsWebSocketUpgrade() throws Exception {
+        var headers = mock(HttpHeaders.class);
+        var message = mock(HttpMessage.class);
+        when(message.headers()).thenReturn(headers);
+
+        Method method = MitmHandler.class.getDeclaredMethod("isWebSocketUpgrade", HttpMessage.class);
+        method.setAccessible(true);
+
+        when(headers.get(HttpHeaderNames.UPGRADE)).thenReturn("websocket");
+        when(headers.get(HttpHeaderNames.CONNECTION)).thenReturn("Upgrade");
+        assertTrue((Boolean) method.invoke(null, message));
+
+        // Negative case: missing UPGRADE
+        when(headers.get(HttpHeaderNames.UPGRADE)).thenReturn(null);
+        assertFalse((Boolean) method.invoke(null, message));
+
+        // Negative case: missing CONNECTION
+        when(headers.get(HttpHeaderNames.UPGRADE)).thenReturn("websocket");
+        when(headers.get(HttpHeaderNames.CONNECTION)).thenReturn(null);
+        assertFalse((Boolean) method.invoke(null, message));
+
+        // Negative case: different values
+        when(headers.get(HttpHeaderNames.UPGRADE)).thenReturn("notwebsocket");
+        assertFalse((Boolean) method.invoke(null, message));
+    }
+
+    @Test
+    void testShouldDoPreflight() throws Exception {
+        var method = MitmHandler.class.getDeclaredMethod("shouldDoPreflight", String.class);
+        method.setAccessible(true);
+
+        assertFalse((Boolean) method.invoke(null, "/authApi/v1/mtls/ephemeralProof"));
+        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/whoami"));
+        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/token"));
+        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/publicKey"));
+
+        assertTrue((Boolean) method.invoke(null, "/some/other/uri"));
+        assertTrue((Boolean) method.invoke(null, "/identityApi/v1/mtls/foobar"));
+    }
+
+    @Test
+    void testSendEphemeralProof() {
+        var ctx = mock(ChannelHandlerContext.class);
+        var channel = mock(Channel.class);
+        var eventLoop = mock(io.netty.channel.EventLoop.class);
+        var addr = mock(Addr.class);
+        var completableFuture = new java.util.concurrent.CompletableFuture<Void>();
+        var destAddr = "test-addr";
+
+        when(ctx.channel()).thenReturn(channel);
+        when(channel.eventLoop()).thenReturn(eventLoop);
+        when(addr.addr()).thenReturn(destAddr);
+
+        try (var mocked = org.mockito.Mockito.mockConstruction(
+                eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient.class, (mock, context) -> {
+                    when(mock.getEphemeralProofAndSendToDest(destAddr)).thenReturn(completableFuture);
+                })) {
+            var handler = new MitmHandler(addr, 1024);
+            var result = handler.sendEphemeralProof(ctx);
+            assertTrue(result == completableFuture);
+
+            var constructed = mocked.constructed();
+            assertTrue(constructed.size() == 1);
+            verify(constructed.get(0)).getEphemeralProofAndSendToDest(destAddr);
+        }
     }
 }
