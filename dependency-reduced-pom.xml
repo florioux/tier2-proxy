@@ -87,6 +87,46 @@
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.12</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <exclude>**/configurations/*</exclude>
+            <exclude>**/controllers/*</exclude>
+            <exclude>**/dto/*</exclude>
+            <exclude>**/exceptions/*</exclude>
+            <exclude>**/mappers/*</exclude>
+            <exclude>**/repositories/*</exclude>
+            <exclude>**/liquibase/*/pojo/*</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-junit5</artifactId>
+            <version>2.29.1</version>
+          </dependency>
+        </dependencies>
+      </plugin>
     </plugins>
   </build>
   <repositories>
