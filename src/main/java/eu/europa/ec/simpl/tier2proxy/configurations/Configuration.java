@@ -5,6 +5,7 @@ import eu.europa.ec.simpl.tier2proxy.ServerConfig;
 import eu.europa.ec.simpl.tier2proxy.TeardownPolicy;
 import eu.europa.ec.simpl.tier2proxy.certificate.CaEndpoint;
 import eu.europa.ec.simpl.tier2proxy.certificate.CertificateOptions;
+import eu.europa.ec.simpl.tier2proxy.certificate.DNBuilder;
 import eu.europa.ec.simpl.tier2proxy.certificate.http.CertificateServerOptions;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpProtocolServerOptions;
 import eu.europa.ec.simpl.tier2proxy.proxy.socks.SocksProtocolServerOptions;
@@ -24,6 +25,7 @@ import org.bouncycastle.asn1.x500.X500Name;
 public final class Configuration {
     private static final String ALL_IP = "0.0.0.0";
     private static final String AGGREGATOR_MAX_LENGTH = "65536";
+    private static final int KEY_VALUE_DN_ARRAY_LENGTH = 2;
 
     @Getter(value = AccessLevel.NONE)
     private static final Properties properties;
@@ -109,7 +111,7 @@ public final class Configuration {
                 loadCertificateOptions());
     }
 
-    public static CertificateOptions loadCertificateOptions() {
+    private static CertificateOptions loadCertificateOptions() {
         var location = properties.getProperty("proxy.certificate.ca.location", "/tmp/certs");
         var dn = parseDistinguishedName();
         var privateKey = loadPrivateKeyConfig();
@@ -131,7 +133,7 @@ public final class Configuration {
     private static X500Name parseDistinguishedName() {
         var x500String = properties.getProperty(
                 "proxy.certificate.ca.x500-name", "C=EU, ST=IT, L=Rome, O=Mitm Proxy, OU=Mitm Proxy, CN=Mitm Proxy CA");
-        return new X500Name(x500String);
+        return DNBuilder.buildDN(x500String);
     }
 
     private static CertificateOptions.PrivateKey loadPrivateKeyConfig() {

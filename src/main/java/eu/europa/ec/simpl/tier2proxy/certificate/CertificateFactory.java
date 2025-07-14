@@ -1,6 +1,7 @@
 package eu.europa.ec.simpl.tier2proxy.certificate;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
+import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPairGenerator;
@@ -98,10 +99,12 @@ final class CertificateFactory {
     private CertificateInfo createCertificate(CertificateInfo caCertificateInfo, String host)
             throws IOException, OperatorCreationException, CertificateException {
         log.debug("creating certificate for {} given {} as certificate authority", host, caCertificateInfo);
-        var caCertificate = caCertificateInfo.certificate();
         var caPrivateKey = caCertificateInfo.privateKey();
 
-        var issuer = new X500Name(caCertificate.getSubjectX500Principal().getName());
+        var issuer = Configuration.getInstance()
+                .getCertificateServerOptions()
+                .certificateOptions()
+                .caSubject();
         var serial = serial();
         var certValidityPeriod = this.certificateValidityPeriod.from();
         var subject = getSubject(host);

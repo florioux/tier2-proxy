@@ -17,4 +17,12 @@ class ConfigurationTest {
         var conf2 = Configuration.getInstance();
         Assertions.assertThat(conf1).isSameAs(conf2);
     }
+
+    @Test
+    void getSubjectCA() {
+        var conf = Configuration.getInstance();
+        var subject = conf.getCertificateServerOptions().certificateOptions().caSubject();
+        System.out.println(subject.toString());
+        Assertions.assertThat(subject).isNotNull();
+    }
 }
