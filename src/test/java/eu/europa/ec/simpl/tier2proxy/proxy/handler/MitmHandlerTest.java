@@ -2,14 +2,25 @@ package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.CertificateInfo;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
 import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;

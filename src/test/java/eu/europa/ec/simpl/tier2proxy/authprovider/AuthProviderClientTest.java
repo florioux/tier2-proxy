@@ -1,6 +1,10 @@
 package eu.europa.ec.simpl.tier2proxy.authprovider;
 
+import static eu.europa.ec.simpl.tier2proxy.proxy.handler.MitmHandler.PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +14,9 @@ import eu.europa.ec.simpl.tier2proxy.dto.KeypairDTO;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HTTPClient;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpRequest;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.handler.codec.http.HttpMethod;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,6 +117,31 @@ class AuthProviderClientTest {
             assertEquals(KeypairDTO.class, result.getClass());
             assertNull(result.getPublicKey());
             assertNull(result.getPrivateKey());
+        }
+    }
+
+    @Test
+    void shouldRetrieveEphemeralProofAndSendItToDestination() {
+        // Given
+        var dummyProof = "ephemeral-proof";
+        var destination = "some-destination.com";
+
+        try (var mocked = mockConstruction(HTTPClient.class, (mock, context) -> {
+            given(mock.getResponseFuture()).willReturn(CompletableFuture.completedFuture(dummyProof));
+            willDoNothing().given(mock).call(any(HttpRequest.class));
+        })) {
+            // When
+            authProviderClient.getEphemeralProofAndSendToDest(destination).join();
+
+            // Then
+            then(mocked.constructed().get(0)).should().call(any());
+            then(mocked.constructed().get(1))
+                    .should()
+                    .call(argThat(req -> Objects.equals(req.getMethod(), HttpMethod.POST)
+                            && Objects.equals(
+                                    req.getUrl().toString(),
+                                    "https://%s%s".formatted(destination, PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1))
+                            && Objects.equals(dummyProof, req.getBody())));
         }
     }
 }

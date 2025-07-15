@@ -1,32 +1,28 @@
 package eu.europa.ec.simpl.tier2proxy.certificate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
+import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
 import java.io.IOException;
-import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.SecureRandom;
+import java.security.Security;
 import java.security.cert.X509Certificate;
-import java.security.spec.RSAKeyGenParameterSpec;
-import java.time.temporal.ChronoUnit;
 import java.util.NoSuchElementException;
-import javax.security.auth.x500.X500Principal;
-import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.BDDMockito;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,117 +37,137 @@ class CertificateFactoryTest {
     private CertificateAuthorityRepository certificateAuthorityRepository;
 
     @Mock
-    private KeyPairGenerator keyPairGenerator;
-
-    @Mock
-    private KeyPair keyPair;
-
-    @Mock
-    private PrivateKey privateKey;
-
-    @Mock
     private X509Certificate certificate;
 
-    @Mock
-    private X500Principal x500Principal;
-
     private CertificateFactory certificateFactory;
-    private X500Name caSubject;
-    private CertificateOptions.PrivateKey privateKeyOptions;
-    private CertificateOptions.CertificateValidity certificateValidity;
+    private CertificateOptions options;
+
+    @BeforeAll
+    static void bouncyCastle() {
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     @BeforeEach
     void setUp() throws NoSuchAlgorithmException {
-        caSubject = new X500Name("CN=Test CA");
-
-        RSAKeyGenParameterSpec rsaSpec = new RSAKeyGenParameterSpec(2048, RSAKeyGenParameterSpec.F4);
-
-        privateKeyOptions = new CertificateOptions.PrivateKey("RSA", rsaSpec, new SecureRandom());
-
-        certificateValidity = new CertificateOptions.CertificateValidity(1, 1, ChronoUnit.DAYS, ChronoUnit.YEARS);
-
-        lenient().when(certificate.getSubjectX500Principal()).thenReturn(x500Principal);
-        lenient().when(x500Principal.getName()).thenReturn("CN=Test CA");
-
+        options = Configuration.getInstance().getCertificateServerOptions().certificateOptions();
         certificateFactory = new CertificateFactory(
-                caSubject, privateKeyOptions, certificateValidity, SIGNATURE_ALGO, certificateAuthorityRepository);
+                options.caSubject(),
+                options.privateKey(),
+                options.certificateValidity(),
+                options.signatureAlgo(),
+                certificateAuthorityRepository);
     }
 
     @Test
-    void testGetCACertificateShouldReturnStoredCertificateWhenExists() {
+    void getCACertificate_shouldReturnStoredCertificate_whenExists() {
         // Given
-        var expectedCertInfo = new CertificateInfo(privateKey, certificate);
-        when(certificateAuthorityRepository.getStoredCertificate(CA_KEY)).thenReturn(expectedCertInfo);
+        var expectedCert = mock(CertificateInfo.class);
+        given(expectedCert.certificate()).willReturn(certificate);
+        given(certificateAuthorityRepository.getStoredCertificate(CA_KEY)).willReturn(expectedCert);
 
         // When
         var result = certificateFactory.getCACertificate();
 
         // Then
-        assertThat(result).isEqualTo(expectedCertInfo);
-        verify(certificateAuthorityRepository).getStoredCertificate(CA_KEY);
+        assertThat(result.certificate())
+                .as("Check returned CA certificate matches stored certificate")
+                .isEqualTo(certificate);
+
+        then(certificateAuthorityRepository).should().getStoredCertificate(CA_KEY);
     }
 
     @Test
-    void testGetCACertificateShouldCreateNewCertificateWhenNotExists() throws IOException {
+    void getCACertificate_shouldCreateNewCertificate_whenNotExists() throws IOException {
         // Given
-        when(certificateAuthorityRepository.getStoredCertificate(CA_KEY))
-                .thenThrow(new NoSuchElementException("Certificate not found"));
+        given(certificateAuthorityRepository.getStoredCertificate(CA_KEY))
+                .willThrow(new NoSuchElementException("Certificate not found"));
 
         // When
         var result = certificateFactory.getCACertificate();
 
         // Then
-        verify(certificateAuthorityRepository).getStoredCertificate(CA_KEY);
-        verify(certificateAuthorityRepository).storeCertificate(eq(CA_KEY), any(CertificateInfo.class));
+        then(certificateAuthorityRepository).should().getStoredCertificate(CA_KEY);
+        then(certificateAuthorityRepository).should().storeCertificate(CA_KEY, result);
 
-        assertThat(result).isNotNull();
+        assertThat(result)
+                .as("Check new CA certificate is created and not null")
+                .isNotNull();
     }
 
     @Test
-    void testGetCACertificateShouldThrowExceptionWhenCreationFails() throws IOException {
+    void getCACertificate_shouldThrowException_whenCreationFails() throws IOException {
         // Given
-        when(certificateAuthorityRepository.getStoredCertificate(CA_KEY))
-                .thenThrow(new NoSuchElementException("Certificate not found"));
+        given(certificateAuthorityRepository.getStoredCertificate(CA_KEY))
+                .willThrow(new NoSuchElementException("Certificate not found"));
 
-        doThrow(new IOException("Storage error"))
-                .when(certificateAuthorityRepository)
+        BDDMockito.willThrow(new IOException("Storage error"))
+                .given(certificateAuthorityRepository)
                 .storeCertificate(eq(CA_KEY), any(CertificateInfo.class));
 
-        // When/Then
-        assertThatThrownBy(() -> certificateFactory.getCACertificate())
+        // When / Then
+        thenThrownBy(() -> certificateFactory.getCACertificate())
+                .as("Check that exception is thrown when CA certificate creation fails")
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("certificate authority generation in error");
     }
 
     @Test
-    void testGetCertificateShouldReturnStoredCertificateWhenExists() throws IOException {
+    void getCertificate_shouldReturnStoredCertificate_whenExists() throws IOException {
         // Given
-        var caCertInfo = new CertificateInfo(privateKey, certificate);
-        var expectedCertInfo = new CertificateInfo(privateKey, certificate);
+        var caCertInfo = mock(CertificateInfo.class);
 
-        when(certificateAuthorityRepository.getStoredCertificate(TEST_HOST)).thenReturn(expectedCertInfo);
+        var expectedCertInfo = mock(CertificateInfo.class);
+
+        given(certificateAuthorityRepository.getStoredCertificate(TEST_HOST)).willReturn(expectedCertInfo);
 
         // When
         var result = certificateFactory.getCertificate(caCertInfo, TEST_HOST);
 
         // Then
-        assertThat(result).isEqualTo(expectedCertInfo);
-        verify(certificateAuthorityRepository).getStoredCertificate(TEST_HOST);
-        verify(certificateAuthorityRepository, never()).storeCertificate(anyString(), any(CertificateInfo.class));
+        assertThat(result)
+                .as("Check returned certificate matches stored certificate for host")
+                .isEqualTo(expectedCertInfo);
+
+        then(certificateAuthorityRepository).should().getStoredCertificate(TEST_HOST);
+        then(certificateAuthorityRepository)
+                .should(never())
+                .storeCertificate(org.mockito.ArgumentMatchers.anyString(), any());
     }
 
     @Test
-    void testConstructorShouldThrowExceptionWhenInvalidAlgorithm() {
+    void constructor_shouldThrowException_whenInvalidAlgorithm() {
         // Given
         var invalidPrivateKeyOptions = new CertificateOptions.PrivateKey("INVALID_ALGORITHM", null, null);
 
-        // When/Then
-        assertThatThrownBy(() -> new CertificateFactory(
-                        caSubject,
+        // When / Then
+        thenThrownBy(() -> new CertificateFactory(
+                        options.caSubject(),
                         invalidPrivateKeyOptions,
-                        certificateValidity,
-                        SIGNATURE_ALGO,
+                        options.certificateValidity(),
+                        options.signatureAlgo(),
                         certificateAuthorityRepository))
+                .as("Check constructor throws NoSuchAlgorithmException on invalid algorithm")
                 .isInstanceOf(NoSuchAlgorithmException.class);
+    }
+
+    @Test
+    void getCertificateShouldCreateNewCertificateWhenNotExists() throws Exception {
+        // Given
+        var privateKey = KeyPairGenerator.getInstance(options.privateKey().algo())
+                .generateKeyPair()
+                .getPrivate();
+        var caCertInfo = new CertificateInfo(privateKey, certificate);
+
+        given(certificateAuthorityRepository.getStoredCertificate(TEST_HOST))
+                .willThrow(new NoSuchElementException("Certificate not found"));
+
+        // When
+        var result = certificateFactory.getCertificate(caCertInfo, TEST_HOST);
+
+        // Then
+        then(certificateAuthorityRepository).should().getStoredCertificate(TEST_HOST);
+        then(certificateAuthorityRepository).should().storeCertificate(eq(TEST_HOST), any(CertificateInfo.class));
+
+        assertThat(result).as("Il certificato creato non deve essere nullo").isNotNull();
     }
 }

@@ -104,6 +104,7 @@
 			<artifactId>certificate-revocation-common</artifactId>
 			<version>${common.version}</version>
 		</dependency>
+
 	</dependencies>
 
 	<build>
