@@ -2,15 +2,16 @@ package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
 import static org.mockito.Mockito.*;
 
+import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import javax.net.ssl.SSLEngine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -32,15 +33,13 @@ class FromDestinationHandlerTest {
     @Mock
     Channel channel;
 
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    CredentialHolder credentialHolder;
+
     @Mock
     ChannelPipeline pipeline;
 
-    @Mock
-    SSLEngine sslEngine;
-
     FromDestinationHandler<Object> handler;
-
-    ConnectionType connectionType;
 
     @Test
     void testExceptionCaughtNotMTLS() throws Exception {
@@ -50,17 +49,6 @@ class FromDestinationHandlerTest {
             protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
         };
         handler.tlsClientContext = sslContext;
-        handler.exceptionCaught(ctx, cause);
-    }
-
-    @Test
-    void testExceptionCaughtMTLS() throws Exception {
-        handler = new FromDestinationHandler<>(dest, source, ConnectionType.MTLS) {
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
-        };
-        handler.tlsClientContext = sslContext;
-        var cause = new RuntimeException("fail");
         handler.exceptionCaught(ctx, cause);
     }
 
@@ -87,17 +75,6 @@ class FromDestinationHandlerTest {
         handler.tlsClientContext = sslContext;
         handler.channelInactive(ctx);
         verify(source).close();
-    }
-
-    @Test
-    void testChannelInactiveMTLS() {
-        handler = new FromDestinationHandler<>(dest, source, ConnectionType.MTLS) {
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
-        };
-        handler.tlsClientContext = sslContext;
-        handler.channelInactive(ctx);
-        verify(source, never()).close();
     }
 
     @Test

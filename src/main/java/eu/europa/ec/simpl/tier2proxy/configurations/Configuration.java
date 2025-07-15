@@ -5,7 +5,6 @@ import eu.europa.ec.simpl.tier2proxy.ServerConfig;
 import eu.europa.ec.simpl.tier2proxy.TeardownPolicy;
 import eu.europa.ec.simpl.tier2proxy.certificate.CaEndpoint;
 import eu.europa.ec.simpl.tier2proxy.certificate.CertificateOptions;
-import eu.europa.ec.simpl.tier2proxy.certificate.DNBuilder;
 import eu.europa.ec.simpl.tier2proxy.certificate.http.CertificateServerOptions;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpProtocolServerOptions;
 import eu.europa.ec.simpl.tier2proxy.proxy.socks.SocksProtocolServerOptions;
@@ -133,7 +132,7 @@ public final class Configuration {
     private static X500Name parseDistinguishedName() {
         var x500String = properties.getProperty(
                 "proxy.certificate.ca.x500-name", "C=EU, ST=IT, L=Rome, O=Mitm Proxy, OU=Mitm Proxy, CN=Mitm Proxy CA");
-        return DNBuilder.buildDN(x500String);
+        return new X500Name(x500String);
     }
 
     private static CertificateOptions.PrivateKey loadPrivateKeyConfig() {
