@@ -1,5 +1,6 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
@@ -46,17 +47,23 @@ class FromDestinationHandlerTest {
         var cause = new RuntimeException("fail");
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
         handler.exceptionCaught(ctx, cause);
+
+        then(handler).should().exceptionCaught(ctx, cause);
     }
 
     @Test
     void testHandlerRemovedWithTLS() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
         when(ctx.channel()).thenReturn(channel);
@@ -70,7 +77,9 @@ class FromDestinationHandlerTest {
     void testChannelInactiveNotMTLS() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
         handler.channelInactive(ctx);
@@ -81,7 +90,9 @@ class FromDestinationHandlerTest {
     void testRemoveHandlers() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         when(ctx.channel()).thenReturn(channel);
         when(channel.pipeline()).thenReturn(pipeline);
