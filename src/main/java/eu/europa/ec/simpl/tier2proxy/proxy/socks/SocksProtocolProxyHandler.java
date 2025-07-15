@@ -77,7 +77,7 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
         this.socksVersion = socksMessage.version();
         switch (this.socksVersion) {
             case SOCKS4a:
-                manageSocks4(ctx, socksMessage);
+                manageSocks4(ctx, (Socks4CommandRequest) socksMessage);
                 break;
             case SOCKS5:
                 manageSocks5(ctx, socksMessage);
@@ -88,9 +88,8 @@ final class SocksProtocolProxyHandler extends SimpleChannelInboundHandler<SocksM
         }
     }
 
-    private void manageSocks4(ChannelHandlerContext ctx, SocksMessage socksMessage) {
-        log.info("socks4 request: {}", socksMessage);
-        Socks4CommandRequest socksV4CmdRequest = (Socks4CommandRequest) socksMessage;
+    private void manageSocks4(ChannelHandlerContext ctx, Socks4CommandRequest socksV4CmdRequest) {
+        log.info("socks4 request: {}", socksV4CmdRequest);
         if (socksV4CmdRequest.type() == Socks4CommandType.CONNECT) {
             onSocksSuccess(ctx, socksV4CmdRequest);
         } else {

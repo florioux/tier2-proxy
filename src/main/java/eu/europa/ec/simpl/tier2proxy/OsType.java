@@ -1,5 +1,7 @@
 package eu.europa.ec.simpl.tier2proxy;
 
+import static java.lang.Boolean.TRUE;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelOption;
@@ -59,11 +61,11 @@ public enum OsType {
             ServerBootstrap toReturn = new ServerBootstrap()
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     .channel(EpollServerSocketChannel.class)
-                    .childOption(ChannelOption.SO_KEEPALIVE, true);
+                    .childOption(ChannelOption.SO_KEEPALIVE, TRUE);
 
             if (isTransparent) {
-                toReturn = toReturn.option(EpollChannelOption.IP_TRANSPARENT, true)
-                        .childOption(EpollChannelOption.IP_TRANSPARENT, true);
+                toReturn = toReturn.option(EpollChannelOption.IP_TRANSPARENT, TRUE)
+                        .childOption(EpollChannelOption.IP_TRANSPARENT, TRUE);
             }
             return toReturn;
         }
@@ -71,7 +73,7 @@ public enum OsType {
         return new ServerBootstrap()
                 .option(ChannelOption.SO_BACKLOG, 1024)
                 .channel(NioServerSocketChannel.class)
-                .childOption(ChannelOption.SO_KEEPALIVE, true);
+                .childOption(ChannelOption.SO_KEEPALIVE, TRUE);
     }
 
     static OsType fromOS() {

@@ -34,18 +34,15 @@ public class HttpRequest {
             throw new IllegalStateException("FullPath and HttpMethod must be set before building the request.");
         }
 
-        var bodyBytes = Optional.ofNullable(body).map(b -> b.toString().getBytes(StandardCharsets.UTF_8));
+        var bodyBytes = body != null ? body.toString().getBytes(StandardCharsets.UTF_8) : null;
 
         FullHttpRequest request = new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1,
                 method,
                 Objects.requireNonNullElse(url.getPath(), "/"),
-                bodyBytes.map(Unpooled::copiedBuffer).orElse(Unpooled.EMPTY_BUFFER));
+                bodyBytes != null ? Unpooled.copiedBuffer(bodyBytes) : Unpooled.EMPTY_BUFFER);
 
-        request.headers()
-                .set(
-                        HttpHeaderNames.CONTENT_LENGTH,
-                        bodyBytes.map(bytes -> bytes.length).orElse(0));
+        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bodyBytes != null ? bodyBytes.length : 0);
         request.headers().set(HttpHeaderNames.HOST, url.getHost());
         request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         request.headers().set(HttpHeaderNames.CONTENT_TYPE, getContentType());

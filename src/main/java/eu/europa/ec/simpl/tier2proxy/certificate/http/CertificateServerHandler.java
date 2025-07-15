@@ -77,7 +77,7 @@ final class CertificateServerHandler extends SimpleChannelInboundHandler<FullHtt
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+    public void handlerRemoved(ChannelHandlerContext ctx) {
         log.debug("removing handler for {}", ctx.channel().remoteAddress());
 
         ChannelPipeline pipeline = ctx.pipeline();

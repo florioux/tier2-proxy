@@ -8,7 +8,6 @@ import lombok.SneakyThrows;
 
 @Data
 public final class CredentialHolder {
-    private static CredentialHolder instance = new CredentialHolder();
 
     private KeyStore keyStore;
     private KeyStore trustStore;
@@ -26,9 +25,10 @@ public final class CredentialHolder {
     }
 
     public static CredentialHolder getInstance() {
-        if (instance == null) {
-            instance = new CredentialHolder();
-        }
-        return instance;
+        return CredentialHolderInstanceHolder.INSTANCE;
+    }
+
+    private static class CredentialHolderInstanceHolder {
+        private static final CredentialHolder INSTANCE = new CredentialHolder();
     }
 }
