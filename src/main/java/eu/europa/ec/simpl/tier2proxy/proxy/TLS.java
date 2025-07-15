@@ -1,6 +1,5 @@
 package eu.europa.ec.simpl.tier2proxy.proxy;
 
-import eu.europa.ec.simpl.client.util.CertificateRevocation;
 import eu.europa.ec.simpl.client.util.DaggerCertificateRevocationFactory;
 import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
@@ -12,14 +11,12 @@ import io.netty.handler.ssl.SslProvider;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.PrivateKey;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Optional;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -56,40 +53,14 @@ public final class TLS {
         var trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trustManagerFactory.init(credentialHolder.getKeyStore());
         var trustManager = (X509TrustManager) trustManagerFactory.getTrustManagers()[0];
-        var customTrustManager = new MTLSTrustManager(trustManager);
+        var customTrustManager =
+                new MTLSTrustManager(DaggerCertificateRevocationFactory.create().get(), trustManager);
 
         return SslContextBuilder.forClient()
                 .keyManager(keyManagerFactory)
                 .trustManager(customTrustManager)
                 .sslProvider(sslProvider())
                 .build();
-    }
-
-    @RequiredArgsConstructor
-    private static class MTLSTrustManager implements X509TrustManager {
-        private static final CertificateRevocation certificateRevocation =
-                DaggerCertificateRevocationFactory.create().get();
-
-        private final X509TrustManager delegate;
-
-        @Override
-        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-            delegate.checkClientTrusted(x509Certificates, s);
-        }
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] x509Certificates, String s) {
-            var cert = x509Certificates[0];
-            log.debug(
-                    "checking server trust for {}, serial: {}", cert.getSubjectX500Principal(), cert.getSerialNumber());
-            certificateRevocation.verify(cert);
-            log.debug("server trust for {} is valid", cert.getSubjectX500Principal());
-        }
-
-        @Override
-        public X509Certificate[] getAcceptedIssuers() {
-            return delegate.getAcceptedIssuers();
-        }
     }
 
     private static SslContext getClientSslContext() throws SSLException {

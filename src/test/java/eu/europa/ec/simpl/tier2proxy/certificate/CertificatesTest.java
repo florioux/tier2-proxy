@@ -1,31 +1,64 @@
 package eu.europa.ec.simpl.tier2proxy.certificate;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
+import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
 import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CertificatesTest {
 
     @Mock
-    CertificateOptions certificateOptions;
+    private CertificateOptions certificateOptions;
 
     @Mock
-    CertificateAuthorityRepository certificateAuthorityRepository;
+    private CertificateAuthorityRepository certificateAuthorityRepository;
 
     @Mock
-    CertificateFactory certificateFactory;
+    private CertificateFactory certificateFactory;
 
     @Mock
-    CertificateInfo certificateInfo;
+    private CertificateInfo caCert;
+
+    @Mock
+    private CertificateInfo certificateInfo;
+
+    private CertificateAuthorityRepository mockRepo;
+
+    @Test
+    void shouldBuildCertificatesAndReturnCachedCert() throws Exception {
+        var options = Configuration.getInstance().getCertificateServerOptions().certificateOptions();
+
+        try (MockedConstruction<CertificateFactory> factoryConstruction =
+                mockConstruction(CertificateFactory.class, (mock, context) -> {
+                    given(mock.getCACertificate()).willReturn(caCert);
+                    given(mock.getCertificate(caCert, "localhost")).willReturn(certificateInfo);
+                })) {
+
+            // when
+            var certificates = new Certificates(options, mockRepo);
+            var cert = certificates.certificateFor("localhost");
+
+            // then
+            assertThat(cert).isEqualTo(certificateInfo);
+            assertThat(certificates.getCaCertificate()).isEqualTo(caCert);
+
+            // Verifica caching
+            CertificateInfo secondCall = certificates.certificateFor("localhost");
+            assertThat(secondCall).isEqualTo(cert); // Same instance
+        }
+    }
 
     @Test
     void testToPemAndPrivateKeyFromPem() throws IOException {
