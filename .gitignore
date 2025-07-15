@@ -7,3 +7,4 @@ stuff.txt
 allure-results/
 docker-compose.yaml
 Dockerfile-local
+/tier2-proxy.iml

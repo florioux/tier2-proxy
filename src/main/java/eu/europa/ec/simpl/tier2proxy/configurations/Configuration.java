@@ -24,6 +24,7 @@ import org.bouncycastle.asn1.x500.X500Name;
 public final class Configuration {
     private static final String ALL_IP = "0.0.0.0";
     private static final String AGGREGATOR_MAX_LENGTH = "65536";
+    private static final int KEY_VALUE_DN_ARRAY_LENGTH = 2;
 
     @Getter(value = AccessLevel.NONE)
     private static final Properties properties;
@@ -109,7 +110,7 @@ public final class Configuration {
                 loadCertificateOptions());
     }
 
-    public static CertificateOptions loadCertificateOptions() {
+    private static CertificateOptions loadCertificateOptions() {
         var location = properties.getProperty("proxy.certificate.ca.location", "/tmp/certs");
         var dn = parseDistinguishedName();
         var privateKey = loadPrivateKeyConfig();

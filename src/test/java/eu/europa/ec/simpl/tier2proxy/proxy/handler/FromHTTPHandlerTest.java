@@ -1,6 +1,6 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
-import static eu.europa.ec.simpl.tier2proxy.enums.ConnectionType.HTTP;
+import static eu.europa.ec.simpl.tier2proxy.enums.ConnectionType.MTLS;
 import static org.mockito.Mockito.*;
 
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
@@ -35,8 +35,7 @@ class FromHTTPHandlerTest {
 
     @BeforeEach
     void setUp() {
-        var connectionType = HTTP;
-        handler = new FromHTTPHandler(dest, source, connectionType);
+        handler = new FromHTTPHandler(dest, source, MTLS);
     }
 
     @Test
@@ -65,5 +64,17 @@ class FromHTTPHandlerTest {
 
         verify(source, never()).writeAndFlush(any());
         verify(retained).release();
+    }
+
+    @Test
+    void testExceptionCaughtMTLS() throws Exception {
+        var cause = new RuntimeException("fail");
+        handler.exceptionCaught(ctx, cause);
+    }
+
+    @Test
+    void testChannelInactiveMTLS() {
+        handler.channelInactive(ctx);
+        verify(source, never()).close();
     }
 }
