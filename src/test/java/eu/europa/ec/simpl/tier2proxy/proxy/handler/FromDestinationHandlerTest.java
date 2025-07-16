@@ -1,11 +1,20 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.BDDAssertions.catchException;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
@@ -42,21 +51,28 @@ class FromDestinationHandlerTest {
     FromDestinationHandler<Object> handler;
 
     @Test
-    void testExceptionCaughtNotMTLS() throws Exception {
+    void testExceptionCaughtNotMTLS() {
         var cause = new RuntimeException("fail");
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
-        handler.exceptionCaught(ctx, cause);
+
+        var ex = catchException(() -> handler.exceptionCaught(ctx, cause));
+
+        assertThat(ex).as("No exception should be thrown in a netty handler").isNull();
     }
 
     @Test
     void testHandlerRemovedWithTLS() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
         when(ctx.channel()).thenReturn(channel);
@@ -70,7 +86,9 @@ class FromDestinationHandlerTest {
     void testChannelInactiveNotMTLS() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         handler.tlsClientContext = sslContext;
         handler.channelInactive(ctx);
@@ -81,7 +99,9 @@ class FromDestinationHandlerTest {
     void testRemoveHandlers() {
         handler = new FromDestinationHandler<>(dest, source, ConnectionType.TLS) {
             @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {}
+            protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+                // No-op
+            }
         };
         when(ctx.channel()).thenReturn(channel);
         when(channel.pipeline()).thenReturn(pipeline);
