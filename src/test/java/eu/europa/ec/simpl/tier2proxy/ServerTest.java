@@ -40,7 +40,9 @@ class ServerTest {
         }
 
         @Override
-        public void stop(long quietPeriod, long timeout, TimeUnit unit) {}
+        public void stop(long quietPeriod, long timeout, TimeUnit unit) {
+            // No operation for test purposes
+        }
 
         @Override
         protected ChannelFuture doStart() {
