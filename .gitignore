@@ -1,0 +1,10 @@
+target/
+.idea/
+_managed_ca/
+certificate.pem
+stuff.txt
+/build-and-run.bat
+allure-results/
+docker-compose.yaml
+Dockerfile-local
+/tier2-proxy.iml

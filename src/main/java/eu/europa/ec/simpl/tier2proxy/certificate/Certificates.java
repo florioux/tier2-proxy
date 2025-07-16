@@ -1,0 +1,108 @@
+package eu.europa.ec.simpl.tier2proxy.certificate;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityRepository;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
+
+@Slf4j
+public final class Certificates {
+    private final CertificateFactory certificateFactory;
+
+    @Getter
+    private final CertificateInfo caCertificate;
+
+    private final LoadingCache<String, CertificateInfo> certsCache;
+
+    public Certificates(CertificateOptions co, CertificateAuthorityRepository certificateAuthorityRepository)
+            throws NoSuchAlgorithmException {
+        log.info("loading bouncycastle provider");
+
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+        Security.addProvider(new BouncyCastleProvider());
+
+        log.info("loading certificate authority repository");
+
+        try {
+            this.certificateFactory = new CertificateFactory(
+                    co.caSubject(),
+                    co.privateKey(),
+                    co.certificateValidity(),
+                    co.signatureAlgo(),
+                    certificateAuthorityRepository);
+        } catch (NoSuchAlgorithmException e) {
+            log.error("error while loading certificate factory", e);
+            throw new NoSuchAlgorithmException("error while loading certificate factory", e);
+        }
+
+        this.caCertificate = this.certificateFactory.getCACertificate();
+
+        this.certsCache = Caffeine.newBuilder()
+                .expireAfterWrite(
+                        co.certificateCache().certificateCacheExpirationDuration(),
+                        co.certificateCache().certificateCacheExpirationDurationTimeUnit())
+                .maximumSize(co.certificateCache().certificatesCacheSize())
+                .build(host -> {
+                    log.debug("getting certificate for {}", host);
+                    return certificateFactory.getCertificate(caCertificate, host);
+                });
+    }
+
+    public CertificateInfo certificateFor(String host) {
+        log.debug("certificate for {} host", host);
+        return this.certsCache.get(host);
+    }
+
+    public static byte[] toPem(Object object) throws IOException {
+        var outputStream = new ByteArrayOutputStream();
+
+        try (var writer = new JcaPEMWriter(new OutputStreamWriter(outputStream))) {
+            writer.writeObject(object);
+            writer.flush();
+            return outputStream.toByteArray();
+        }
+    }
+
+    public static PrivateKey privateKeyFromPem(byte[] privateKeyBytes) throws IOException {
+        try (var pemParser = new PEMParser(new InputStreamReader(new ByteArrayInputStream(privateKeyBytes)))) {
+
+            var object = pemParser.readObject();
+            if (object instanceof PEMKeyPair keypair) {
+                var converter = new JcaPEMKeyConverter();
+                var kp = converter.getKeyPair(keypair);
+
+                return kp.getPrivate();
+            } else {
+                throw new IOException("File is not a PEMKeyPair");
+            }
+        } catch (IOException e) {
+            log.error("error while reading private key from byte[]");
+            throw e;
+        }
+    }
+
+    public static X509Certificate certificateFromPem(byte[] certBytes) throws CertificateException {
+        var certFactory = java.security.cert.CertificateFactory.getInstance("X.509");
+        try (var inputStream = new ByteArrayInputStream(certBytes)) {
+            return (X509Certificate) certFactory.generateCertificate(inputStream);
+        } catch (IOException exception) {
+            throw new CertificateException(exception);
+        }
+    }
+}
