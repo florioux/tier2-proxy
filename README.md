@@ -100,7 +100,7 @@ The Tier 2 Outbound Proxy can be easily launched as a Docker container. Below is
 docker run --rm -it
   --name tier2-proxy
   --network host
-  -v /tmp/proxy/config:/config
+  -v proxy-config/application.properties:/config/application
   --env PROXY_CERTIFICATES_SERVER_PORT=3000
   --env PROXY_HTTP_SERVER_PORT=3001
   --env PROXY_SOCKS_SERVER_PORT=3002
