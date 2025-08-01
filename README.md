@@ -46,42 +46,51 @@ proxy.http.server.port=3001
 proxy.socks.server.port=3002
 ```
 
+### Getting the CA Certificate
+To retrieve the internal CA certificate used by the proxy, you can use the following command:
+
+```shell
+curl tier2-proxy.<your-namespace>.svc.cluster.local:3001/cert > ca.pem
+
+```
+
 ## Testing the Proxy
 You can verify that the proxy is functioning correctly using curl. Below are example commands for both **HTTP(S)** and **SOCKS5** modes, covering various handshake scenarios.
+```shell
 
 ### Using HTTP/HTTPS Proxy (Port 3001)
 
-```properties
-# MTLS with preflight check
-HTTPS_PROXY=tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001 \
-curl -k -x "tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001" -v -i \
-'https://t2.iaa-dsstaging-authority.dev.simpl-europe.eu/identityApi/v1/mtls/whoami'
+```shell
+# MTLS on endpoint not protected by the ephemeral proof check
+HTTPS_PROXY=tier2-proxy.<your-namespace>.svc.cluster.local:3001 \
+curl --cacert ca.pem -x "tier2-proxy.<your-namespace>.svc.cluster.local:3001" -v -i \
+'https://<tier2-destination-host>/identityApi/v1/mtls/whoami'
 
-# MTLS direct
-HTTPS_PROXY=tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001 \
-curl -k -x "tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001" -v -i \
-'https://t2.iaa-dsstaging-authority.dev.simpl-europe.eu/sapApi/v1/mtls/identityAttributes'
+# MTLS on endpoint protected by the ephemeral proof check
+HTTPS_PROXY=tier2-proxy.<your-namespace>.svc.cluster.local:3001 \
+curl --cacert ca.pem -x "tier2-proxy.<your-namespace>.svc.cluster.local:3001" -v -i \
+'https://<tier2-destination-host>/sapApi/v1/mtls/identityAttributes'
 
 # Standard TLS fallback
-HTTPS_PROXY=tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001 \
-curl -k -x "tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3001" -v -i \
+HTTPS_PROXY=tier2-proxy.<your-namespace>.svc.cluster.local:3001 \
+curl --cacert ca.pem -x "tier2-proxy.<your-namespace>.svc.cluster.local:3001" -v -i \
 'https://www.google.com'
 
 ```
 
 ### Using SOCKS5 Proxy (Port 3002)
 
-```properties
-# MTLS with preflight check
-curl -k --socks5-hostname tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3002 \
-'https://t2.iaa-dsstaging-authority.dev.simpl-europe.eu/identityApi/v1/mtls/whoami'
+```shell
+# MTLS on endpoint not protected by the ephemeral proof check
+curl --cacert ca.pem --socks5-hostname tier2-proxy.<your-namespace>.svc.cluster.local:3002 \
+'https://<tier2-destination-host>/identityApi/v1/mtls/whoami'
 
-# MTLS direct
-curl -k --socks5-hostname tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3002 \
-'https://t2.iaa-dsstaging-authority.dev.simpl-europe.eu/sapApi/v1/mtls/identityAttributes'
+# MTLS on endpoint protected by the ephemeral proof check
+curl --cacert ca.pem --socks5-hostname tier2-proxy.<your-namespace>.svc.cluster.local:3002 \
+'https://<tier2-destination-host>/sapApi/v1/mtls/identityAttributes'
 
 # Standard TLS fallback
-curl -k --socks5-hostname tier2-proxy.iaa-dsstaging-consumer.svc.cluster.local:3002 \
+curl --cacert ca.pem --socks5-hostname tier2-proxy.<your-namespace>.svc.cluster.local:3002 \
 'https://www.google.com'
 
 ```
@@ -93,7 +102,7 @@ These test commands help validate:
 - Transparent routing
 - Protocol fallback behavior
 
-## Running the Proxy
+## Running the Proxy on Docker
 The Tier 2 Outbound Proxy can be easily launched as a Docker container. Below is a basic example using the docker run command:
 
 ```bash
@@ -116,3 +125,29 @@ Explanation:
 - `SIMPL_AUTHENTICATION_PROVIDER_BASEURL`: This must point to the base URL of the local Authentication Provider microservice used for SIMPL identity management and credential operations.
 
 > Ensure that the `SIMPL_AUTHENTICATION_PROVIDER_BASEURL` is reachable by the container, and that the referenced service is up and running before starting the proxy.
+
+## Running the Proxy on Kubernetes
+The Tier 2 Outbound Proxy can be easily launched as a pod in kubernetes. Below is a basic example using the provided helm chart:
+
+```bash
+helm repo add tier2-proxy-charts https://code.europa.eu/api/v4/projects/1112/packages/helm/stable
+
+helm install tier2-proxy tier2-proxy-charts/tier2-proxy \
+--version 1.0.1 -f values.yaml
+
+```
+
+### Example `values.yaml`
+
+```yaml
+env:
+  - name: PROXY_CERTIFICATES_SERVER_PORT
+    value: "{{- .Values.server.certificates.port }}"
+  - name: PROXY_HTTP_SERVER_PORT
+    value: "{{- .Values.server.http.port }}"
+  - name: PROXY_SOCKS_SERVER_PORT
+    value: "{{- .Values.server.socks.port }}"
+  - name: SIMPL_AUTHENTICATION_PROVIDER_BASEURL
+    value: "http://authentication-provider.{{ .Release.Namespace }}.svc.cluster.local:8080"
+
+```
