@@ -1,5 +1,6 @@
 # Tier2 Proxy
 
+# Table of contents
 - [Tier2 Proxy](#tier2-proxy)
   - [Purpose](#purpose)
   - [Key Functions](#key-functions)
@@ -11,7 +12,7 @@
   - [Logging](#logging)
   - [Summary](#summary)
   - [Performance Considerations](#performance-considerations)
-  - [🚀 Runtime Behavior and Usage Examples](#🚀-runtime-behavior-and-usage-examples)
+  - [Runtime Behavior and Usage Examples](#runtime-behavior-and-usage-examples)
     - [Prerequisites](#prerequisites)
     - [Running the Proxy on Docker](#running-the-proxy-on-docker)
     - [Running the Proxy on Kubernetes](#running-the-proxy-on-kubernetes)
@@ -127,7 +128,7 @@ each component. However, this approach would partially conflict with one of the 
 enabling existing components to communicate through the SIMPL Tier 2 communication layer without requiring
 changes to their implementation.
 
-## 🚀 Runtime Behavior and Usage Examples
+## Runtime Behavior and Usage Examples
 
 Once started, the Tier 2 Outbound Proxy listens on **three ports**, each serving a distinct purpose:
 
