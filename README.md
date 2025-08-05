@@ -1,34 +1,112 @@
 # Tier2 Proxy
 
-## Project Description
+## Purpose
+The Tier 2 outbound proxy is a Simpl-Open middleware architecture component. It is designed to enable secure
+and compliant agent-to-agent communication from internal components that cannot be modified using the SIMPL HTTP client library.
 
-The **Tier 2 Outbound Proxy** is a middleware component within the **SIMPL-Open architecture**, designed to enable **secure, compliant agent-to-agent communication** from internal systems that **cannot be modified** to use the SIMPL HTTP client library.
+These components may include:
 
-### When and Why to Use It
+- Brownfield systems that are legacy or third-party and cannot be updated to use custom libraries
+- Services implemented in incompatible programming languages or frameworks
+- Applications using HTTP client stacks that do not support SIMPL’s extensions for dynamic credential selection or mTLS
 
-This proxy is specifically intended for integration with:
+By transparently routing their outbound traffic through the proxy, these components can participate in
+dataspace communications without needing to be rewritten.
 
-- **Legacy (“brownfield”) systems** or third-party services that cannot be updated
-- Applications built in **languages or frameworks incompatible** with the SIMPL client library
-- Components that rely on HTTP clients **without support for dynamic credential selection or mutual TLS (mTLS)**
+Additionally, for each component, we will enable:
 
-By routing outbound traffic through this proxy, such components can **participate in dataspace communication** securely and transparently—**without requiring code changes**.
+- automatic logging
+- credential-based authentication (via mTLS negotiation with other SIMPL participants)
 
-### What It Provides
+## Key Functions
 
-For each connected component, the outbound proxy transparently enables:
+The outbound proxy serves the following functions:
 
-- **Credential-based authentication** via mTLS handshake with other SIMPL agents
-- **Automatic logging** of outbound requests, destinations, and security handshakes
-- **Inspection and enforcement** of dataspace compliance policies
-- **Support for standard proxy protocols**, including **SOCKS 4a/5** and **HTTP CONNECT**
+- Enable dataspace-compliant communication for non-adaptable or brownfield components
+- Intercept and inspect outbound HTTP(S) traffic while preserving secure communication
+- Facilitate dynamic mTLS authentication with other SIMPL agents using onboarded credentials
+- Capture audit destination endpoints and protocols used
+- Provide operational flexibility through support for standard proxy protocols (SOCKS 4a/5 and HTTP CONNECT)
 
-This makes it possible to integrate non-adaptable systems into the SIMPL ecosystem while maintaining a strong security and compliance posture.
+## Bootstrapping and Trust Anchoring
 
----
+Before operational use, the proxy undergoes a bootstrapping process:
 
-**For additional technical details and design considerations, refer to the full documentation:**  
-[https://confluence.simplprogramme.eu/display/SIMPL/8070+-+Tier+2+Outbound+Proxy](https://confluence.simplprogramme.eu/display/SIMPL/8070+-+Tier+2+Outbound+Proxy)
+- The proxy initialises its own internal Certificate Authority to support TLS interception
+- The root certificate of this CA is provided to internal clients, enabling them to trust dynamically generated certificates
+- The proxy is now able to decrypt and forward outbound HTTPS traffic transparently
+
+This process ensures secure operation without requiring changes to the internal services themselves.
+
+## High-level overview
+
+How the proxy interacts with any SIMPL is described in this diagram:
+
+![diagram](docs/imgs/Tier 2 Outbound Proxy.png)
+
+A SIMPL-Open agent can be configured to route outbound traffic from a specific internal component through the
+outbound proxy by setting it as the component’s designated proxy. Once configured, all HTTP(S) communication
+initiated by that component is transparently redirected to the proxy, enabling inspection, dynamic credential
+injection, and compliance enforcement without requiring changes to the component itself.
+
+## Traffic Handling Overview
+
+## Plaintext (HTTP or SOCKS)
+
+- SOCKS 5 protocol: The proxy accepts unauthenticated connections and logs the connection metadata (source, destination).
+- HTTP: Requests are forwarded as-is to the destination. Full URIs and response status codes are logged.
+
+This mode enables visibility over traditional, non-encrypted communication.
+
+![img](docs/imgs/proxy-plain-text.png)
+
+## Encrypted (HTTPS/TLS)
+
+> The way the handshake process between participants is designed follows Simpl-Open Security Architecture -
+  SIMPL - Confluence, "Agent-to-Agent Communication - Details" section.
+
+**Connection Establishment**:
+
+1. Clients connect using SOCKS CONNECT or HTTP CONNECT
+- The proxy establishes a TLS session with the client using a forged certificate, dynamically generated and signed by the internal CA
+- The proxy parses the SNI (Server Name Indication) to determine the target hostname and issues a matching forged certificate
+
+**Forwarding with TLS/mTLS**:
+
+1. The proxy attempts to establish a secure connection to the destination
+- If the destination is identified as a SIMPL peer, it attempts to upgrade the connection to mutual TLS,
+authenticating itself with the participant’s credentials
+- If mTLS fails or is unsupported, it falls back to standard TLS
+
+![img](docs/imgs/proxy-tls.png)
+
+## Logging
+
+All stages of the handshake, interception, and forwarding are logged, including:
+
+- SNI and target domain
+- Whether mTLS was attempted and succeeded or failed
+- Certificate details and request/response status
+
+## Summary
+
+The Tier 2 outbound proxy acts as a compliance and connectivity enabler within the SIMPL Open agent
+architecture. It bridges the gap between dataspace trust requirements and the practical realities of legacy or
+externally developed systems. By supporting passive interception and credential-aware forwarding, it provides
+a pathway for agent-to-agent communication even in constrained deployment contexts.
+
+## Performance Considerations
+
+Introducing a proxy layer inherently adds some degree of overhead compared to using the client library
+directly. While the client library can handle everything internally, the proxy requires an additional HTTP
+hop: the original component initiates an HTTP request, which is then handled by the proxy (involving I/O
+between the component and the proxy), followed by another I/O operation from the proxy to the external
+resource. On top of this, the proxy must allocate computational resources to actively process and route the
+traffic. This added complexity naturally introduces latency and resource consumption. The only way to
+eliminate this overhead would be to remove the proxy entirely and integrate the client library directly into
+each component. However, this approach would partially conflict with one of the proxy’s key objectives:
+enabling existing components to communicate through the SIMPL Tier 2 communication layer without requiring
+changes to their implementation.
 
 ## 🚀 Runtime Behavior and Usage Examples
 
