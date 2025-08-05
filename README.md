@@ -1,5 +1,27 @@
 # Tier2 Proxy
 
+- [Tier2 Proxy](#tier2-proxy)
+  - [Purpose](#purpose)
+  - [Key Functions](#key-functions)
+  - [Bootstrapping and Trust Anchoring](#bootstrapping-and-trust-anchoring)
+  - [High-level overview](#high-level-overview)
+  - [Traffic Handling Overview](#traffic-handling-overview)
+  - [Plaintext (HTTP or SOCKS)](#plaintext-(http-or-socks))
+  - [Encrypted (HTTPS/TLS)](#encrypted-(https/tls))
+  - [Logging](#logging)
+  - [Summary](#summary)
+  - [Performance Considerations](#performance-considerations)
+  - [🚀 Runtime Behavior and Usage Examples](#🚀-runtime-behavior-and-usage-examples)
+    - [Prerequisites](#prerequisites)
+    - [Running the Proxy on Docker](#running-the-proxy-on-docker)
+    - [Running the Proxy on Kubernetes](#running-the-proxy-on-kubernetes)
+    - [Getting the CA Certificate](#getting-the-ca-certificate)
+    - [Testing the Proxy](#testing-the-proxy)
+      - [Using HTTP/HTTPS Proxy (Port 3001)](#using-http/https-proxy-(port-3001))
+      - [Using SOCKS5 Proxy (Port 3002)](#using-socks5-proxy-(port-3002))
+    - [How to configure application to use the Proxy](#how-to-configure-application-to-use-the-proxy)
+      - [Example Dockerfile](#example-dockerfile)
+
 ## Purpose
 The Tier 2 outbound proxy is a Simpl-Open middleware architecture component. It is designed to enable secure
 and compliant agent-to-agent communication from internal components that cannot be modified using the SIMPL HTTP client library.
@@ -62,21 +84,18 @@ This mode enables visibility over traditional, non-encrypted communication.
 
 ## Encrypted (HTTPS/TLS)
 
-> The way the handshake process between participants is designed follows Simpl-Open Security Architecture -
-  SIMPL - Confluence, "Agent-to-Agent Communication - Details" section.
-
 **Connection Establishment**:
 
 1. Clients connect using SOCKS CONNECT or HTTP CONNECT
-- The proxy establishes a TLS session with the client using a forged certificate, dynamically generated and signed by the internal CA
-- The proxy parses the SNI (Server Name Indication) to determine the target hostname and issues a matching forged certificate
+2. The proxy establishes a TLS session with the client using a forged certificate, dynamically generated and signed by the internal CA
+3. The proxy parses the SNI (Server Name Indication) to determine the target hostname and issues a matching forged certificate
 
 **Forwarding with TLS/mTLS**:
 
 1. The proxy attempts to establish a secure connection to the destination
-- If the destination is identified as a SIMPL peer, it attempts to upgrade the connection to mutual TLS,
-authenticating itself with the participant’s credentials
-- If mTLS fails or is unsupported, it falls back to standard TLS
+2. If the destination is identified as a SIMPL peer, it attempts to upgrade the connection to mutual TLS,
+   authenticating itself with the participant’s credentials
+4. If mTLS fails or is unsupported, it falls back to standard TLS
 
 ![img](docs/imgs/proxy-tls.png)
 
