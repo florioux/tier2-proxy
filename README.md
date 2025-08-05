@@ -1,14 +1,13 @@
 # Tier2 Proxy
 
-# Table of contents
 - [Tier2 Proxy](#tier2-proxy)
   - [Purpose](#purpose)
   - [Key Functions](#key-functions)
   - [Bootstrapping and Trust Anchoring](#bootstrapping-and-trust-anchoring)
   - [High-level overview](#high-level-overview)
   - [Traffic Handling Overview](#traffic-handling-overview)
-  - [Plaintext (HTTP or SOCKS)](#plaintext-(http-or-socks))
-  - [Encrypted (HTTPS/TLS)](#encrypted-(https/tls))
+    - [Plaintext (HTTP or SOCKS)](#plaintext-http-or-socks))
+    - [Encrypted (HTTPS/TLS)](#encrypted-httpstls)
   - [Logging](#logging)
   - [Summary](#summary)
   - [Performance Considerations](#performance-considerations)
@@ -18,8 +17,8 @@
     - [Running the Proxy on Kubernetes](#running-the-proxy-on-kubernetes)
     - [Getting the CA Certificate](#getting-the-ca-certificate)
     - [Testing the Proxy](#testing-the-proxy)
-      - [Using HTTP/HTTPS Proxy (Port 3001)](#using-http/https-proxy-(port-3001))
-      - [Using SOCKS5 Proxy (Port 3002)](#using-socks5-proxy-(port-3002))
+      - [Using HTTP/HTTPS Proxy (Port 3001)](#using-httphttps-proxy-port-3001)
+      - [Using SOCKS5 Proxy (Port 3002)](#using-socks5-proxy-port-3002)
     - [How to configure application to use the Proxy](#how-to-configure-application-to-use-the-proxy)
       - [Example Dockerfile](#example-dockerfile)
 
@@ -74,7 +73,7 @@ injection, and compliance enforcement without requiring changes to the component
 
 ## Traffic Handling Overview
 
-## Plaintext (HTTP or SOCKS)
+### Plaintext (HTTP or SOCKS)
 
 - SOCKS 5 protocol: The proxy accepts unauthenticated connections and logs the connection metadata (source, destination).
 - HTTP: Requests are forwarded as-is to the destination. Full URIs and response status codes are logged.
@@ -83,7 +82,7 @@ This mode enables visibility over traditional, non-encrypted communication.
 
 ![img](docs/imgs/proxy-plain-text.png)
 
-## Encrypted (HTTPS/TLS)
+### Encrypted (HTTPS/TLS)
 
 **Connection Establishment**:
 
