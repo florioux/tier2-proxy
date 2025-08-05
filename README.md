@@ -83,26 +83,20 @@ Explanation:
 > Ensure that the `SIMPL_AUTHENTICATION_PROVIDER_BASEURL` is reachable by the container, and that the referenced service is up and running before starting the proxy.
 
 ### Running the Proxy on Kubernetes
-The Tier 2 Outbound Proxy can be easily launched as a pod in kubernetes. Below is a basic example using the provided helm chart:
+
+The Tier 2 Outbound Proxy can be easily launched as a pod in Kubernetes.
+
+The [`values.yaml`](charts/values.yaml) file is self-contained and provides all the necessary configuration for a standard deployment. 
+However, you can customize any parameter according to your needs, by overriding values via another yaml (`-f other-values.yaml`).
+
+This approach ensures a ready-to-use configuration, but remains flexible for different environments or specific requirements.
+Below is a basic example using the provided Helm chart:
 
 ```bash
 helm repo add tier2-proxy-charts https://code.europa.eu/api/v4/projects/1112/packages/helm/stable
 
 helm install tier2-proxy tier2-proxy-charts/tier2-proxy \
---version <chart version> -f values.yaml
-```
-
-#### Example `values.yaml`
-```yaml
-env:
-  - name: PROXY_CERTIFICATES_SERVER_PORT
-    value: "{{- .Values.server.certificates.port }}"
-  - name: PROXY_HTTP_SERVER_PORT
-    value: "{{- .Values.server.http.port }}"
-  - name: PROXY_SOCKS_SERVER_PORT
-    value: "{{- .Values.server.socks.port }}"
-  - name: SIMPL_AUTHENTICATION_PROVIDER_BASEURL
-    value: "http://authentication-provider.{{ .Release.Namespace }}.svc.cluster.local:8080"
+--version <chart version> 
 ```
 
 ### Getting the CA Certificate
