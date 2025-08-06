@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>eu.europa.ec.simpl</groupId>
   <artifactId>tier2-proxy</artifactId>
-  <version>0.1.0-RC</version>
+  <version>${env.PROJECT_RELEASE_VERSION}</version>
   <build>
     <pluginManagement>
       <plugins>
@@ -221,7 +221,7 @@
   </dependencies>
   <properties>
     <netty.version>4.1.119.Final</netty.version>
-    <common.version>2.1.0</common.version>
+    <common.version>2.2.0</common.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <logback.version>1.5.17</logback.version>
     <simpl-http-client.version>2.1.0</simpl-http-client.version>

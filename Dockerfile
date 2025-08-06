@@ -1,11 +1,8 @@
-FROM eclipse-temurin:21-jdk-alpine
+FROM amazoncorretto:24-alpine3.22-jdk
 
 ENV CERTS_FOLDER=${CERTS_FOLDER:-/tmp/certs}
-
-
 RUN adduser -S -u 1001 1001 && \
-    mkdir -p "$CERTS_FOLDER" && chown 1001 "$CERTS_FOLDER"
-
+    mkdir -p "${CERTS_FOLDER}" && chown 1001 "${CERTS_FOLDER}"
 
 COPY target/tier2-proxy-*.jar app.jar
 
