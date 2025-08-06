@@ -1,5 +1,12 @@
 # Tier2 Proxy
 
+## Summary
+
+The Tier 2 outbound proxy acts as a compliance and connectivity enabler within the SIMPL Open agent
+architecture. It bridges the gap between dataspace trust requirements and the practical realities of legacy or
+externally developed systems. By supporting passive interception and credential-aware forwarding, it provides
+a pathway for agent-to-agent communication even in constrained deployment contexts.
+
 - [Tier2 Proxy](#tier2-proxy)
   - [Purpose](#purpose)
   - [Key Functions](#key-functions)
@@ -9,7 +16,6 @@
     - [Plaintext (HTTP or SOCKS)](#plaintext-http-or-socks))
     - [Encrypted (HTTPS/TLS)](#encrypted-httpstls)
   - [Logging](#logging)
-  - [Summary](#summary)
   - [Performance Considerations](#performance-considerations)
   - [Runtime Behavior and Usage Examples](#runtime-behavior-and-usage-examples)
     - [Prerequisites](#prerequisites)
@@ -106,13 +112,6 @@ All stages of the handshake, interception, and forwarding are logged, including:
 - SNI and target domain
 - Whether mTLS was attempted and succeeded or failed
 - Certificate details and request/response status
-
-## Summary
-
-The Tier 2 outbound proxy acts as a compliance and connectivity enabler within the SIMPL Open agent
-architecture. It bridges the gap between dataspace trust requirements and the practical realities of legacy or
-externally developed systems. By supporting passive interception and credential-aware forwarding, it provides
-a pathway for agent-to-agent communication even in constrained deployment contexts.
 
 ## Performance Considerations
 
