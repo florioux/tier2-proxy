@@ -1,9 +1,15 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.http;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import eu.europa.ec.simpl.tier2proxy.HandlerInPipeline;
+import eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
+import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
+import eu.europa.ec.simpl.tier2proxy.proxy.handler.BootstrapFactory;
 import eu.europa.ec.simpl.tier2proxy.proxy.handler.MitmHandler;
+import eu.europa.ec.simpl.util.PemConverter;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -14,6 +20,7 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -22,13 +29,18 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
     private final HandlerInPipeline<ChannelHandler, ChannelHandler> httpObjectAggregator;
     private final HttpProtocolServerOptions httpProtocolServerOptions;
     private final Certificates certificates;
+    private final BootstrapFactory bootstrapFactory;
 
     private Addr dest;
 
-    public HttpProxyHandler(HttpProtocolServerOptions httpProtocolServerOptions, Certificates certificates) {
+    public HttpProxyHandler(
+            HttpProtocolServerOptions httpProtocolServerOptions,
+            Certificates certificates,
+            BootstrapFactory bootstrapFactory) {
         super();
         this.httpProtocolServerOptions = httpProtocolServerOptions;
         this.certificates = certificates;
+        this.bootstrapFactory = Objects.requireNonNullElseGet(bootstrapFactory, BootstrapFactory::new);
 
         this.httpServerCodec = new HandlerInPipeline<>(this, new HttpServerCodec());
         this.httpObjectAggregator = new HandlerInPipeline<>(
@@ -73,13 +85,18 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
         ctx.writeAndFlush(response);
 
         log.debug("hijacking TLS for {}", this.dest);
+        var certificateInfo = certificates.certificateFor(dest.addr());
 
         HandlerInPipeline<ChannelHandler, ChannelHandler> mitmHandler = new HandlerInPipeline<>(
                 this,
                 new MitmHandler(
-                        this.certificates,
                         this.dest,
-                        this.httpProtocolServerOptions.httpObjectAggregatorMaxContentLength()));
+                        this.httpProtocolServerOptions.httpObjectAggregatorMaxContentLength(),
+                        new AuthProviderClient(
+                                new HTTPClient(bootstrapFactory.get(ctx)),
+                                new ObjectMapper().registerModule(new JavaTimeModule()),
+                                new PemConverter()),
+                        TLS.getServerSslContext(certificateInfo.privateKey(), certificateInfo.certificate())));
 
         ctx.pipeline().replace(this, mitmHandler.handlerName(), mitmHandler.handler());
     }
@@ -95,7 +112,14 @@ final class HttpProxyHandler extends SimpleChannelInboundHandler<FullHttpRequest
 
         HandlerInPipeline<ChannelHandler, ChannelHandler> mitmHandler = new HandlerInPipeline<>(
                 this,
-                new MitmHandler(this.dest, this.httpProtocolServerOptions.httpObjectAggregatorMaxContentLength()));
+                new MitmHandler(
+                        this.dest,
+                        this.httpProtocolServerOptions.httpObjectAggregatorMaxContentLength(),
+                        new AuthProviderClient(
+                                new HTTPClient(bootstrapFactory.get(ctx)),
+                                new ObjectMapper().registerModule(new JavaTimeModule()),
+                                new PemConverter()),
+                        null));
 
         ctx.pipeline()
                 .replace(this, mitmHandler.handlerName(), mitmHandler.handler())

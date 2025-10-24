@@ -1,147 +1,139 @@
 package eu.europa.ec.simpl.tier2proxy.authprovider;
 
-import static eu.europa.ec.simpl.tier2proxy.proxy.handler.MitmHandler.PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1;
-import static org.junit.jupiter.api.Assertions.*;
+import static eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient.PARTICIPANT_EPHEMERAL_PROOF_TARGET_TIER2_V2;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.*;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
-import eu.europa.ec.simpl.tier2proxy.configurations.SimplProperties;
+import eu.europa.ec.simpl.tier2proxy.dto.ActiveCredentialDTO;
+import eu.europa.ec.simpl.tier2proxy.dto.EphemeralProofDTO;
 import eu.europa.ec.simpl.tier2proxy.dto.KeypairDTO;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HTTPClient;
-import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpRequest;
-import io.netty.bootstrap.Bootstrap;
+import eu.europa.ec.simpl.tier2proxy.util.Resources;
+import eu.europa.ec.simpl.util.PemConverter;
 import io.netty.handler.codec.http.HttpMethod;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.concurrent.CompletionException;
+import org.instancio.Instancio;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedConstruction;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AuthProviderClientTest {
 
-    @Mock
-    private Bootstrap bootstrap;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private HTTPClient httpClient;
 
     @Mock
     private ObjectMapper objectMapper;
 
     @Mock
+    private PemConverter pemConverter;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Configuration configuration;
 
+    @InjectMocks
     private AuthProviderClient authProviderClient;
-
-    @BeforeEach
-    void setUp() {
-        authProviderClient = new AuthProviderClient(bootstrap);
-    }
 
     @Test
     void testGetCredentialSuccess() throws Exception {
-        var url = "http://test/credentials";
-        var response = "credential-response";
-        var properties = mock(SimplProperties.class);
-        var authProvider = mock(SimplProperties.AuthenticationProviderProperties.class);
-        var request = mock(HttpRequest.class);
-        try (MockedConstruction<HTTPClient> mocked = Mockito.mockConstruction(HTTPClient.class, (mock, context) -> {
-            doNothing().when(mock).call(any(HttpRequest.class));
-            when(mock.getResponseFuture()).thenReturn(CompletableFuture.completedFuture(response));
-        })) {
-            var result = authProviderClient.getCredential();
-            assertNotNull(result);
-            assertArrayEquals(response.getBytes(StandardCharsets.UTF_8), result);
-        }
+        var pem = Resources.Pem.CERTIFICATE_CHAIN.load();
+        var chain = new PemConverter().parseX509CertificateChain(pem);
+        var activeCredential = Instancio.create(ActiveCredentialDTO.class).setContent(pem.toString());
+
+        given(httpClient.getResponseFuture().get()).willReturn("credential-json");
+        given(objectMapper.readValue(anyString(), eq(ActiveCredentialDTO.class)))
+                .willReturn(activeCredential);
+
+        given(pemConverter.parseX509CertificateChain(pem)).willReturn(chain);
+
+        var result = authProviderClient.getCredential();
+
+        assertThat(result).isEqualTo(chain);
     }
 
     @Test
-    void testGetCredentialException() throws Exception {
-        var url = "http://test/credentials";
-        var properties = mock(SimplProperties.class);
-        var authProvider = mock(SimplProperties.AuthenticationProviderProperties.class);
-        var request = mock(HttpRequest.class);
-        try (MockedConstruction<HTTPClient> mocked = Mockito.mockConstruction(HTTPClient.class, (mock, context) -> {
-            doNothing().when(mock).call(any(HttpRequest.class));
-            when(mock.getResponseFuture()).thenReturn(CompletableFuture.failedFuture(new RuntimeException("fail")));
-        })) {
-            var result = authProviderClient.getCredential();
-            assertNull(result);
-        }
+    void testGetCredentialFailReturnEmptyList() throws Exception {
+        given(httpClient.getResponseFuture().get()).willThrow(new RuntimeException("fail"));
+
+        var result = authProviderClient.getCredential();
+
+        assertThat(result).isEmpty();
     }
 
     @Test
-    void testGetInstalledKeypairSuccess() throws Exception {
-        var url = "http://test/keypairs";
-        var response = "keypair-json";
-        var keypairDTO = mock(KeypairDTO.class);
-        var properties = mock(SimplProperties.class);
-        var authProvider = mock(SimplProperties.AuthenticationProviderProperties.class);
-        var request = mock(HttpRequest.class);
-        try (MockedConstruction<HTTPClient> mocked = Mockito.mockConstruction(HTTPClient.class, (mock, context) -> {
-            doNothing().when(mock).call(any(HttpRequest.class));
-            when(mock.getResponseFuture()).thenReturn(CompletableFuture.completedFuture(response));
-        })) {
-            // mock objectMapper static field via reflection
-            var objectMapperField = AuthProviderClient.class.getDeclaredField("objectMapper");
-            objectMapperField.setAccessible(true);
-            objectMapperField.set(authProviderClient, objectMapper);
-            when(objectMapper.readValue(response, KeypairDTO.class)).thenReturn(keypairDTO);
-            var result = authProviderClient.getInstalledKeypair();
-            assertNotNull(result);
-            assertEquals(keypairDTO, result);
-        }
+    void testLoadPrivateKeySuccess() throws Exception {
+        var pem = Resources.Pem.PRIVATE_KEY.load();
+        var privateKey = new PemConverter().parsePrivateKey(pem);
+        var activeCredential = Instancio.create(KeypairDTO.class).setPrivateKey(pem.toString());
+
+        given(httpClient.getResponseFuture().get()).willReturn("credential-json");
+        given(objectMapper.readValue(anyString(), eq(KeypairDTO.class))).willReturn(activeCredential);
+
+        given(pemConverter.parsePrivateKey(pem)).willReturn(privateKey);
+
+        var result = authProviderClient.loadPrivateKey();
+
+        assertThat(result).as("Private key should be present").isPresent().hasValue(privateKey);
     }
 
     @Test
-    void testGetInstalledKeypairException() throws Exception {
-        var url = "http://test/keypairs";
-        var request = mock(HttpRequest.class);
-        try (MockedConstruction<HTTPClient> mocked = Mockito.mockConstruction(HTTPClient.class, (mock, context) -> {
-            doNothing().when(mock).call(any(HttpRequest.class));
-            when(mock.getResponseFuture()).thenReturn(CompletableFuture.completedFuture("bad-json"));
-        })) {
-            var objectMapperField = AuthProviderClient.class.getDeclaredField("objectMapper");
-            objectMapperField.setAccessible(true);
-            objectMapperField.set(authProviderClient, objectMapper);
-            when(objectMapper.readValue(anyString(), eq(KeypairDTO.class))).thenThrow(new RuntimeException("fail"));
+    void testLoadPrivateKeyReturnEmptyResult() throws Exception {
+        given(httpClient.getResponseFuture().get()).willThrow(new RuntimeException("fail"));
 
-            var result = authProviderClient.getInstalledKeypair();
-            assertEquals(KeypairDTO.class, result.getClass());
-            assertNull(result.getPublicKey());
-            assertNull(result.getPrivateKey());
-        }
+        var result = authProviderClient.loadPrivateKey();
+
+        assertThat(result).as("Empty optional should be returned").isEmpty();
     }
 
     @Test
-    void shouldRetrieveEphemeralProofAndSendItToDestination() {
-        // Given
-        var dummyProof = "ephemeral-proof";
-        var destination = "some-destination.com";
+    void shouldRetrieveEphemeralProofAndSendItToDestination() throws Exception {
 
-        try (var mocked = mockConstruction(HTTPClient.class, (mock, context) -> {
-            given(mock.getResponseFuture()).willReturn(CompletableFuture.completedFuture(dummyProof));
-            willDoNothing().given(mock).call(any(HttpRequest.class));
-        })) {
-            // When
-            authProviderClient.getEphemeralProofAndSendToDest(destination).join();
+        var proof = "ephemeral-proof";
+        var destination = "consumer.com";
+        var ephemeralProofDTO = Instancio.create(EphemeralProofDTO.class).setProof(proof);
+        given(httpClient.getResponseFuture()).willReturn(CompletableFuture.completedFuture(proof));
+        doNothing().when(httpClient).call(any());
+        given(objectMapper.readValue(anyString(), eq(EphemeralProofDTO.class))).willReturn(ephemeralProofDTO);
+        given(objectMapper.writeValueAsString(any())).willReturn("ephemeral-proof-json");
+        var future = authProviderClient.getEphemeralProofAndSendToDest(destination);
 
-            // Then
-            then(mocked.constructed().get(0)).should().call(any());
-            then(mocked.constructed().get(1))
-                    .should()
-                    .call(argThat(req -> Objects.equals(req.getMethod(), HttpMethod.POST)
-                            && Objects.equals(
-                                    req.getUrl().toString(),
-                                    "https://%s%s".formatted(destination, PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1))
-                            && Objects.equals(dummyProof, req.getBody())));
-        }
+        CompletableFuture.allOf(future).join();
+
+        then(httpClient)
+                .should()
+                .call(argThat(req -> req.getUrl().toString().startsWith("http://localhost:8085")
+                        && req.getUrl().toString().endsWith("/tier1/v2/ephemeralProof")
+                        && Objects.equals(req.getMethod(), HttpMethod.GET)));
+        then(httpClient)
+                .should()
+                .call(argThat(req -> req.getHost().equals(destination)
+                        && req.getUrl().toString().endsWith(PARTICIPANT_EPHEMERAL_PROOF_TARGET_TIER2_V2)
+                        && Objects.equals(req.getMethod(), HttpMethod.POST)));
+    }
+
+    @Test
+    void testRetrieveEphemeralProofAndSendItToDestinationWhenFailEphemeralProofParsingShouldThrow() throws Exception {
+
+        var proof = "malformed{json}";
+        var destination = "consumer.com";
+        given(httpClient.getResponseFuture()).willReturn(CompletableFuture.completedFuture(proof));
+        doNothing().when(httpClient).call(any());
+        given(objectMapper.readValue(anyString(), eq(EphemeralProofDTO.class)))
+                .willThrow(new JsonParseException("fail"));
+        var future = authProviderClient.getEphemeralProofAndSendToDest(destination);
+
+        assertThatThrownBy(() -> CompletableFuture.allOf(future).join()).isInstanceOf(CompletionException.class);
     }
 }
