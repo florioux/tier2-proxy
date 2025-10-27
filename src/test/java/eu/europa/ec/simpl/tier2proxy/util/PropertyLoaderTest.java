@@ -59,6 +59,7 @@ class PropertyLoaderTest {
                 .isNotEmpty()
                 .containsEntry("simpl.authentication-provider.baseurl", "http://auth-provider")
                 .containsEntry(
-                        "simpl.authentication-provider.get-credentials-url", "http://auth-provider/v1/credentials");
+                        "simpl.authentication-provider.get-credentials-url",
+                        "http://auth-provider/tier1/v2/credentials/active");
     }
 }

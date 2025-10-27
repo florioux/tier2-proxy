@@ -1,7 +1,11 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -12,11 +16,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import eu.europa.ec.simpl.tier2proxy.certificate.CertificateInfo;
+import eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
 import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
+import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -25,56 +30,61 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.security.PrivateKey;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class MitmHandlerTest {
 
+    @Mock
     private Addr dest;
+
+    @Mock
     private Certificates certificates;
+
+    @Mock
     private ChannelHandlerContext ctx;
+
+    @Mock
     private ChannelPipeline pipeline;
+
+    @Mock
     private Channel channel;
+
+    @Mock
     private FullHttpRequest request;
+
+    @Mock
     private SslContext sslContext;
 
-    @BeforeEach
-    void setUp() {
-        dest = mock(Addr.class);
-        certificates = mock(Certificates.class);
-        ctx = mock(ChannelHandlerContext.class);
-        pipeline = mock(ChannelPipeline.class);
-        channel = mock(Channel.class);
-        request = mock(FullHttpRequest.class);
-        sslContext = mock(SslContext.class);
-    }
+    @Mock
+    private AuthProviderClient authProviderClient;
+
+    @Mock
+    private BootstrapFactory bootstrapFactory;
 
     @Test
     void testHandlerAddedWithTls() throws IOException {
         when(ctx.pipeline()).thenReturn(pipeline);
         when(ctx.channel()).thenReturn(channel);
-        when(dest.addr()).thenReturn("localhost");
         when(sslContext.newEngine(any())).thenReturn(mock(javax.net.ssl.SSLEngine.class));
         when(pipeline.addBefore(any(), any(), any())).thenReturn(pipeline);
 
-        CertificateInfo certInfo = mock(CertificateInfo.class);
-        when(certificates.certificateFor(anyString())).thenReturn(certInfo);
-        when(certInfo.privateKey()).thenReturn(mock(PrivateKey.class));
         when(sslContext.newEngine(any())).thenReturn(mock(javax.net.ssl.SSLEngine.class));
 
         try (MockedStatic<TLS> tlsMock = mockStatic(TLS.class)) {
             tlsMock.when(() -> TLS.getServerSslContext(any(), any())).thenReturn(sslContext);
 
-            MitmHandler handler = new MitmHandler(certificates, dest, 1024);
+            MitmHandler handler = new MitmHandler(dest, 1024, authProviderClient, sslContext);
             handler.handlerAdded(ctx);
 
             verify(pipeline, atLeastOnce()).addBefore(any(), eq("io.netty.handler.ssl.SslHandler"), any());
@@ -90,8 +100,7 @@ class MitmHandlerTest {
 
         when(ctx.pipeline()).thenReturn(pipeline);
         when(pipeline.addBefore(any(), any(), any())).thenReturn(pipeline);
-
-        MitmHandler handler = new MitmHandler(dest, 1024);
+        MitmHandler handler = new MitmHandler(dest, 1024, authProviderClient, bootstrapFactory, null);
         handler.handlerAdded(ctx);
 
         verify(pipeline, never()).addBefore(any(), eq("io.netty.handler.ssl.SslHandler"), any());
@@ -103,11 +112,10 @@ class MitmHandlerTest {
 
     @Test
     void testHandlerRemovedWithoutTls() {
-        when(pipeline.remove(any(String.class))).thenReturn(mock(ChannelHandler.class));
         when(pipeline.get(anyString())).thenReturn(mock(ChannelHandler.class));
         when(ctx.pipeline()).thenReturn(pipeline);
 
-        MitmHandler handler = new MitmHandler(dest, 1024);
+        MitmHandler handler = new MitmHandler(dest, 1024, authProviderClient, bootstrapFactory, null);
         handler.handlerRemoved(ctx);
 
         verify(pipeline, never()).remove(SslHandler.class);
@@ -173,17 +181,63 @@ class MitmHandlerTest {
     }
 
     @Test
-    void testShouldDoPreflight() throws Exception {
-        var method = MitmHandler.class.getDeclaredMethod("shouldDoPreflight", String.class);
+    void testShouldNotDoPreflightOnExcludedPaths() throws Exception {
+        var method = MitmHandler.class.getDeclaredMethod("shouldDoPreflight", FullHttpRequest.class);
         method.setAccessible(true);
 
-        assertFalse((Boolean) method.invoke(null, "/authApi/v1/mtls/ephemeralProof"));
-        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/whoami"));
-        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/token"));
-        assertFalse((Boolean) method.invoke(null, "/identityApi/v1/mtls/publicKey"));
+        testShouldDoPreflight(false, HttpMethod.POST, "/authApi/v1/mtls/ephemeralProof");
+        testShouldDoPreflight(false, HttpMethod.GET, "/identityApi/v1/mtls/whoami");
+        testShouldDoPreflight(false, HttpMethod.POST, "/sapApi/v1/mtls/token");
+        testShouldDoPreflight(false, HttpMethod.PATCH, "/identityApi/v1/mtls/publicKey");
+    }
 
-        assertTrue((Boolean) method.invoke(null, "/some/other/uri"));
-        assertTrue((Boolean) method.invoke(null, "/identityApi/v1/mtls/foobar"));
+    @Test
+    void testShouldDoPreflightOnNonExcludedPaths() throws Exception {
+        testShouldDoPreflight(true, HttpMethod.GET, "/some/other/uri");
+    }
+
+    private void testShouldDoPreflight(boolean shouldDo, HttpMethod httpMethod, String uri) throws Exception {
+        var bootstrap = mock(Bootstrap.class);
+        var channelFuture = mock(io.netty.channel.ChannelFuture.class);
+        var channelFromFuture = mock(Channel.class);
+        given(bootstrap.connect(anyString(), anyInt())).willReturn(channelFuture);
+        given(channelFuture.addListener(any())).willReturn(channelFuture);
+        given(channelFuture.channel()).willReturn(channelFromFuture);
+        given(channelFromFuture.closeFuture()).willReturn(channelFuture);
+
+        given(ctx.channel()).willReturn(channel);
+        if (shouldDo) {
+            given(authProviderClient.getEphemeralProofAndSendToDest(anyString()))
+                    .willReturn(CompletableFuture.completedFuture(null));
+        }
+        given(dest.addr()).willReturn("test-addr");
+        given(dest.port()).willReturn(443);
+
+        given(bootstrapFactory.get(ctx)).willReturn(bootstrap);
+        given(bootstrap.handler(any())).willReturn(bootstrap);
+        given(request.retainedDuplicate()).willReturn(request);
+        given(request.method()).willReturn(httpMethod);
+        given(request.headers()).willReturn(mock(HttpHeaders.class));
+        given(request.uri()).willReturn(uri);
+
+        new MitmHandler(dest, 1024, authProviderClient, bootstrapFactory, sslContext).channelRead0(ctx, request);
+
+        then(authProviderClient).should(shouldDo ? atLeastOnce() : never()).getEphemeralProofAndSendToDest(anyString());
+    }
+
+    private void testShouldDoPreflight2(boolean shouldDo, HttpMethod httpMethod, String uri) throws Exception {
+        var method = MitmHandler.class.getDeclaredMethod("shouldDoPreflight", FullHttpRequest.class);
+        method.setAccessible(true);
+
+        var request = mock(FullHttpRequest.class);
+        given(request.method()).willReturn(httpMethod);
+        given(request.uri()).willReturn(uri);
+
+        if (shouldDo) {
+            assertTrue((Boolean) method.invoke(null, request));
+        } else {
+            assertFalse((Boolean) method.invoke(null, request));
+        }
     }
 
     @Test
@@ -195,21 +249,11 @@ class MitmHandlerTest {
         var completableFuture = new java.util.concurrent.CompletableFuture<Void>();
         var destAddr = "test-addr";
 
-        when(ctx.channel()).thenReturn(channel);
-        when(channel.eventLoop()).thenReturn(eventLoop);
         when(addr.addr()).thenReturn(destAddr);
 
-        try (var mocked = org.mockito.Mockito.mockConstruction(
-                eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient.class, (mock, context) -> {
-                    when(mock.getEphemeralProofAndSendToDest(destAddr)).thenReturn(completableFuture);
-                })) {
-            var handler = new MitmHandler(addr, 1024);
-            var result = handler.sendEphemeralProof(ctx);
-            assertTrue(result == completableFuture);
-
-            var constructed = mocked.constructed();
-            assertTrue(constructed.size() == 1);
-            verify(constructed.get(0)).getEphemeralProofAndSendToDest(destAddr);
-        }
+        given(authProviderClient.getEphemeralProofAndSendToDest(anyString())).willReturn(completableFuture);
+        var handler = new MitmHandler(addr, 1024, authProviderClient, bootstrapFactory, sslContext);
+        var result = handler.sendEphemeralProof();
+        assertThat(result).isEqualTo(completableFuture);
     }
 }

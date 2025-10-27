@@ -4,14 +4,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
+import eu.europa.ec.simpl.tier2proxy.proxy.handler.BootstrapFactory;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,14 +29,13 @@ class HttpProxyHandlerTest {
     HttpProtocolServerOptions options;
 
     @Mock
+    BootstrapFactory bootstrapFactory;
+
+    @Mock
     Certificates certificates;
 
+    @InjectMocks
     HttpProxyHandler handler;
-
-    @BeforeEach
-    void setup() {
-        handler = new HttpProxyHandler(options, certificates);
-    }
 
     @Test
     void testHandlerAddedAddsHandlersToPipeline() {

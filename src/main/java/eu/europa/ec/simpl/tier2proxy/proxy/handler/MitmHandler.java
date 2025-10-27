@@ -1,11 +1,10 @@
 package eu.europa.ec.simpl.tier2proxy.proxy.handler;
 
 import eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient;
-import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
+import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
+import eu.europa.ec.simpl.tier2proxy.configurations.SimplProperties;
 import eu.europa.ec.simpl.tier2proxy.enums.ConnectionType;
 import eu.europa.ec.simpl.tier2proxy.proxy.Addr;
-import eu.europa.ec.simpl.tier2proxy.proxy.TLS;
-import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
@@ -23,9 +22,8 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,36 +31,39 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class MitmHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
-    public static final String PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1 = "/authApi/v1/mtls/ephemeralProof";
-    private static final String AUTHORITY_WHOAMI_TARGET_V1 = "/identityApi/v1/mtls/whoami";
-    private static final String AUTHORITY_EPHEMERAL_PROOF_TARGET_V1 = "/identityApi/v1/mtls/token";
-    private static final String AUTHORITY_PUBLIC_KEY_TARGET_V1 = "/identityApi/v1/mtls/publicKey";
-
-    private static final Set<String> NO_PREFLIGHT_PATHS = Set.of(
-            AUTHORITY_EPHEMERAL_PROOF_TARGET_V1,
-            AUTHORITY_PUBLIC_KEY_TARGET_V1,
-            PARTICIPANT_EPHEMERAL_PROOF_TARGET_V1,
-            AUTHORITY_WHOAMI_TARGET_V1);
+    private static final List<SimplProperties.NoPreflightPath> NO_PREFLIGHT_PATHS =
+            Configuration.getInstance().getSimplProperties().noPreflightPaths();
 
     private final Addr dest;
     private final ChannelHandler httpServerCodec;
     private final ChannelHandler httpObjectAggregator;
-    private SslContext tlsServerContext;
+    private final AuthProviderClient authProviderClient;
+    private final BootstrapFactory bootstrapFactory;
 
-    public MitmHandler(Addr dest, int httpObjectAggregatorMaxContentLength) {
+    private final SslContext tlsServerContext;
+
+    public MitmHandler(
+            Addr dest,
+            int httpObjectAggregatorMaxContentLength,
+            AuthProviderClient authProviderClient,
+            BootstrapFactory bootstrapFactory,
+            SslContext tlsServerContext) {
         super();
         this.dest = dest;
+        this.authProviderClient = authProviderClient;
+        this.tlsServerContext = tlsServerContext;
         this.httpServerCodec = new HttpServerCodec();
         this.httpObjectAggregator = new HttpObjectAggregator(httpObjectAggregatorMaxContentLength);
+        this.bootstrapFactory = Objects.requireNonNullElse(bootstrapFactory, new BootstrapFactory());
     }
 
-    public MitmHandler(Certificates certificates, Addr dest, int httpObjectAggregatorMaxContentLength)
-            throws IOException {
-        this(dest, httpObjectAggregatorMaxContentLength);
+    public MitmHandler(
+            Addr dest,
+            int httpObjectAggregatorMaxContentLength,
+            AuthProviderClient authProviderClient,
+            SslContext tlsServerContext) {
+        this(dest, httpObjectAggregatorMaxContentLength, authProviderClient, null, tlsServerContext);
         log.debug("preparing handler for destination {}", dest);
-        var certificateInfo = certificates.certificateFor(dest.addr());
-
-        this.tlsServerContext = TLS.getServerSslContext(certificateInfo.privateKey(), certificateInfo.certificate());
     }
 
     @Override
@@ -116,8 +117,8 @@ public final class MitmHandler extends SimpleChannelInboundHandler<FullHttpReque
 
         if (Objects.equals(connectionType, ConnectionType.MTLS)) {
             log.debug("handling MTLS connection for {}", this.dest);
-            if (shouldDoPreflight(retainedRequest.uri())) {
-                sendEphemeralProof(ctx)
+            if (shouldDoPreflight(retainedRequest)) {
+                sendEphemeralProof()
                         .thenAccept(futureCtx -> {
                             log.debug("Ephemeral proof sent to peer {}", this.dest);
                             doRealCall(ctx, isWebsocket, connectionType, retainedRequest);
@@ -159,23 +160,21 @@ public final class MitmHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
     }
 
-    public CompletableFuture<Void> sendEphemeralProof(ChannelHandlerContext ctx) {
-        return new AuthProviderClient(new Bootstrap()
-                        .group(ctx.channel().eventLoop())
-                        .channel(ctx.channel().getClass()))
-                .getEphemeralProofAndSendToDest(dest.addr());
+    public CompletableFuture<Void> sendEphemeralProof() {
+        return authProviderClient.getEphemeralProofAndSendToDest(dest.addr());
     }
 
-    private static boolean shouldDoPreflight(String uri) {
-        return !NO_PREFLIGHT_PATHS.contains(uri);
+    private static boolean shouldDoPreflight(FullHttpRequest request) {
+        return NO_PREFLIGHT_PATHS.stream().noneMatch(path -> {
+            var matches = path.matches(request.method(), request.uri());
+            log.trace("Request {} {} matches with {}: {}", request.method(), request.uri(), path, matches);
+            return matches;
+        });
     }
 
     private Channel connectToDestination(
             ChannelHandlerContext ctx, OutboundChannelInitializer handlerMTLS, FullHttpRequest retainedRequest) {
-        var bootstrap = new Bootstrap()
-                .group(ctx.channel().eventLoop())
-                .channel(ctx.channel().getClass())
-                .handler(handlerMTLS);
+        var bootstrap = bootstrapFactory.get(ctx).handler(handlerMTLS);
 
         return bootstrap
                 .connect(dest.addr(), dest.port())

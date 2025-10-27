@@ -38,11 +38,14 @@ public class PropertyLoader {
 
         var props = new Properties();
 
-        try (var fis = Files.newInputStream(Paths.get(filePath))) {
-            props.load(fis);
-            resolveProperties(props);
-        } catch (IOException e) {
-            log.debug("Failed to load properties from file: {}", filePath, e);
+        var path = Paths.get(filePath);
+        if (Files.exists(path)) {
+            try (var fis = Files.newInputStream(path)) {
+                props.load(fis);
+                resolveProperties(props);
+            } catch (IOException e) {
+                log.error("Failed to load properties from file: {}", filePath, e);
+            }
         }
         return props;
     }
