@@ -34,6 +34,49 @@ spec:
       serviceAccountName: {{ .Chart.Name }}-svc-account
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: check-authentication-provider
+          image: "curlimages/curl:8.6.0"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: CHECK_CREDENTIAL_PRESENCE
+              value: "{{ ternary "true" "false" .Values.initContainers.checkAuthProvider.checkCredentialPresence.enabled }}"
+            - name: AUTH_PROVIDER_URL
+              value: "{{ tpl .Values.authenticationProviderUrl . }}/actuator/health"
+            - name: CREDENTIAL_CHECK_URL
+              value: "{{ tpl .Values.authenticationProviderUrl . }}/tier1/v2/credentials/active"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Checking if authentication-provider is up at $AUTH_PROVIDER_URL ..."
+
+              until curl -f "$AUTH_PROVIDER_URL" | grep '"status":"UP"'; do
+                echo "authentication-provider not ready yet. Retrying in 5s..."
+                sleep 5
+              done
+
+              echo "authentication-provider is up."
+
+              if [ "$CHECK_CREDENTIAL_PRESENCE" = "true" ]; then
+                echo "Checking credential presence..."
+                until (
+                  http_response_code="$(curl -qs $CREDENTIAL_CHECK_URL -o /dev/null -w "%{response_code}")"
+                  echo "Check response code: $http_response_code"
+                  [[ "$http_response_code" == "200" ]]
+                  ); do
+                  echo "Waiting credential installation"
+                  echo "Retry credentials installation check..."
+                  sleep 10
+                done
+                echo "Credential is installed."
+              else
+                echo "Credential presence check disabled."
+              fi
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
