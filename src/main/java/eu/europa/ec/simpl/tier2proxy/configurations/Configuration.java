@@ -13,18 +13,21 @@ import io.netty.handler.codec.http.HttpMethod;
 import java.security.SecureRandom;
 import java.security.spec.ECGenParameterSpec;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.bouncycastle.asn1.x500.X500Name;
 
+@Log4j2
 @Getter
 public final class Configuration {
     private static final String ALL_IP = "0.0.0.0";
     private static final String AGGREGATOR_MAX_LENGTH = "65536";
-    private static final int KEY_VALUE_DN_ARRAY_LENGTH = 2;
 
     @Getter(value = AccessLevel.NONE)
     private static final Properties properties;
@@ -53,15 +56,42 @@ public final class Configuration {
     }
 
     private static SimplProperties loadSimplProperties() {
-        return new SimplProperties(new SimplProperties.AuthenticationProviderProperties(
-                properties.getProperty("simpl.authentication-provider.baseurl", "http://localhost:8085"),
-                properties.getProperty(
-                        "simpl.authentication-provider.get-credentials-url", "http://localhost:8085/v1/credentials"),
-                properties.getProperty(
-                        "simpl.authentication-provider.get-keypair-url", "http://localhost:8085/v1/keypairs"),
-                properties.getProperty(
-                        "simpl.authentication-provider.get-ephemeral-proof-url",
-                        "http://localhost:8085/v1/agent/ephemeralProof")));
+        return new SimplProperties(
+                new SimplProperties.AuthenticationProviderProperties(
+                        properties.getProperty("simpl.authentication-provider.baseurl", "http://localhost:8085"),
+                        properties.getProperty(
+                                "simpl.authentication-provider.get-credentials-url",
+                                "http://localhost:8085/tier1/v2/credentials"),
+                        properties.getProperty(
+                                "simpl.authentication-provider.get-keypair-url",
+                                "http://localhost:8085/tier1/v2/keypairs/active"),
+                        properties.getProperty(
+                                "simpl.authentication-provider.get-ephemeral-proof-url",
+                                "http://localhost:8085/tier1/v2/ephemeralProof")),
+                loadNoPreflightPaths());
+    }
+
+    private static List<SimplProperties.NoPreflightPath> loadNoPreflightPaths() {
+        var property = properties.getProperty("simpl.no-preflight-paths");
+        var paths = Stream.of(property.split(",")).toList();
+        return parseNoPreflightPaths(paths);
+    }
+
+    private static List<SimplProperties.NoPreflightPath> parseNoPreflightPaths(List<String> noPreflightPaths) {
+        return noPreflightPaths.stream()
+                .map(Configuration::parseNoPreflightPath)
+                .toList();
+    }
+
+    private static SimplProperties.NoPreflightPath parseNoPreflightPath(String line) {
+        var parts = line.trim().split("\\s+", 2);
+        if (parts.length != 2) {
+            log.error(
+                    "No-preflight-path entry should contain exactly two parts separated by whitespace: method and path. Found: {}",
+                    line);
+            throw new IllegalArgumentException("Invalid no-preflight-path entry: " + line);
+        }
+        return new SimplProperties.NoPreflightPath(HttpMethod.valueOf(parts[0].toUpperCase()), parts[1]);
     }
 
     private static ProxyOptions loadProxyOptions() {

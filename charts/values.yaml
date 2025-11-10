@@ -89,6 +89,7 @@ volumeMounts:
   - name: external-config
     mountPath: /config/
 
+authenticationProviderUrl: http://authentication-provider.{{ .Release.Namespace }}.svc.cluster.local:8080
 env:
   - name: PROXY_CERTIFICATES_SERVER_PORT
     value: "{{- .Values.server.certificates.port }}"
@@ -97,7 +98,7 @@ env:
   - name: PROXY_SOCKS_SERVER_PORT
     value: "{{- .Values.server.socks.port }}"
   - name: SIMPL_AUTHENTICATION_PROVIDER_BASEURL
-    value: "http://authentication-provider.{{ .Release.Namespace }}.svc.cluster.local:8080"
+    value: "{{ tpl .Values.authenticationProviderUrl . }}"
 
 nodeSelector: {}
 
@@ -108,3 +109,8 @@ affinity: {}
 
 # Additional application configuration for the Tier 2 Proxy service
 appConfig: |
+
+initContainers:
+  checkAuthProvider:
+    checkCredentialPresence:
+      enabled: true

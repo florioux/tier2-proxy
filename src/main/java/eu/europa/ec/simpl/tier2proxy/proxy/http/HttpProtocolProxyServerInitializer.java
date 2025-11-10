@@ -16,7 +16,7 @@ final class HttpProtocolProxyServerInitializer extends ChannelInitializer<Channe
     protected void initChannel(Channel channel) {
         log.debug("initializing pipeline for {}", channel);
 
-        var handler = new HttpProxyHandler(httpProtocolServerOptions, certificates);
+        var handler = new HttpProxyHandler(httpProtocolServerOptions, certificates, null);
         channel.pipeline().addLast(HttpProxyHandler.class.getCanonicalName(), handler);
         log.debug("pipeline for {} initialized", channel);
     }

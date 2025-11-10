@@ -1,5 +1,7 @@
 package eu.europa.ec.simpl.tier2proxy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import eu.europa.ec.simpl.tier2proxy.authprovider.AuthProviderClient;
 import eu.europa.ec.simpl.tier2proxy.authprovider.CredentialHolder;
 import eu.europa.ec.simpl.tier2proxy.certificate.Certificates;
@@ -7,8 +9,10 @@ import eu.europa.ec.simpl.tier2proxy.certificate.authority.CertificateAuthorityR
 import eu.europa.ec.simpl.tier2proxy.certificate.authority.impl.FileSystemCertificateAuthorityImpl;
 import eu.europa.ec.simpl.tier2proxy.certificate.http.CertificateServer;
 import eu.europa.ec.simpl.tier2proxy.configurations.Configuration;
+import eu.europa.ec.simpl.tier2proxy.proxy.http.HTTPClient;
 import eu.europa.ec.simpl.tier2proxy.proxy.http.HttpProtocolProxyServer;
 import eu.europa.ec.simpl.tier2proxy.proxy.socks.SocksProtocolProxyServer;
+import eu.europa.ec.simpl.util.PemConverter;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.DefaultEventLoop;
 import io.netty.channel.EventLoopGroup;
@@ -96,12 +100,15 @@ public final class Proxy {
     }
 
     private static void initializeSimplCredentials(Bootstrap bootstrap) {
-        var authProviderClient = new AuthProviderClient(bootstrap);
+        var objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        var pemConverter = new PemConverter();
 
         CredentialHolder.getInstance()
                 .initCredentials(
-                        authProviderClient.getCredential(),
-                        authProviderClient.getInstalledKeypair().getPrivateKey());
+                        new AuthProviderClient(new HTTPClient(bootstrap), objectMapper, pemConverter).getCredential(),
+                        new AuthProviderClient(new HTTPClient(bootstrap), objectMapper, pemConverter)
+                                .loadPrivateKey()
+                                .orElseThrow());
     }
 
     private static CertificateAuthorityRepository fsCertificateAuthorityRepository() {

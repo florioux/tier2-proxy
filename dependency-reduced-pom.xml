@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>eu.europa.ec.simpl</groupId>
   <artifactId>tier2-proxy</artifactId>
-  <version>${env.PROJECT_RELEASE_VERSION}</version>
+  <version>1.2.0-RC</version>
   <build>
     <pluginManagement>
       <plugins>
@@ -105,17 +105,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration>
-          <excludes>
-            <exclude>**/configurations/*</exclude>
-            <exclude>**/controllers/*</exclude>
-            <exclude>**/dto/*</exclude>
-            <exclude>**/exceptions/*</exclude>
-            <exclude>**/mappers/*</exclude>
-            <exclude>**/repositories/*</exclude>
-            <exclude>**/liquibase/*/pojo/*</exclude>
-          </excludes>
-        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -218,13 +207,24 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>org.instancio</groupId>
+      <artifactId>instancio-junit</artifactId>
+      <version>5.2.0</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>instancio-core</artifactId>
+          <groupId>org.instancio</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <properties>
-    <netty.version>4.1.119.Final</netty.version>
-    <common.version>2.2.0</common.version>
+    <netty.version>4.2.7.Final</netty.version>
+    <common.version>2.6.0</common.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <logback.version>1.5.17</logback.version>
-    <simpl-http-client.version>2.1.0</simpl-http-client.version>
     <jna.version>5.16.0</jna.version>
     <caffeine.version>3.2.0</caffeine.version>
     <spotless.version>2.43.0</spotless.version>

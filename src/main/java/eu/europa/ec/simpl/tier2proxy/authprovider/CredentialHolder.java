@@ -1,8 +1,10 @@
 package eu.europa.ec.simpl.tier2proxy.authprovider;
 
 import eu.europa.ec.simpl.tier2proxy.util.CredentialUtil;
-import java.io.ByteArrayInputStream;
 import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
+import java.util.List;
 import lombok.Data;
 import lombok.SneakyThrows;
 
@@ -15,12 +17,11 @@ public final class CredentialHolder {
     private CredentialHolder() {}
 
     @SneakyThrows
-    public void initCredentials(byte[] credential, byte[] privateKey) {
-        if (credential == null || privateKey == null) {
+    public void initCredentials(List<X509Certificate> chain, PrivateKey privateKey) {
+        if (chain == null || chain.isEmpty() || privateKey == null) {
             throw new IllegalStateException("Credential is not set");
         }
-        var pk = CredentialUtil.loadPrivateKey(privateKey);
-        this.keyStore = CredentialUtil.loadCredential(new ByteArrayInputStream(credential), pk);
+        this.keyStore = CredentialUtil.loadCredential(chain, privateKey);
         this.trustStore = CredentialUtil.buildTrustStore(this.keyStore);
     }
 

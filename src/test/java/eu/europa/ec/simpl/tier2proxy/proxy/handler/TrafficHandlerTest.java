@@ -31,6 +31,9 @@ class TrafficHandlerTest {
     @Mock
     private SslContext sslContext;
 
+    @Mock
+    private BootstrapFactory bootstrapFactory;
+
     @Test
     void testShouldReplaceItselfWithMitmHandlerWhenTLSIsDetected() throws Exception {
         // Arrange
@@ -53,7 +56,7 @@ class TrafficHandlerTest {
             tlsMock.when(() -> TLS.extractSNI(any())).thenReturn(Optional.of("example.com"));
             tlsMock.when(() -> TLS.getServerSslContext(any(), any())).thenReturn(sslContext);
 
-            var handler = new TrafficHandler(certificates, dest, 65536);
+            var handler = new TrafficHandler(certificates, dest, 65536, bootstrapFactory);
 
             // Act
             handler.channelRead0(ctx, buf);
@@ -79,7 +82,7 @@ class TrafficHandlerTest {
         given(pipeline.replace(any(ChannelHandler.class), anyString(), any(ChannelHandler.class)))
                 .willReturn(pipeline);
 
-        TrafficHandler handler = new TrafficHandler(certificates, dest, 65536);
+        TrafficHandler handler = new TrafficHandler(certificates, dest, 65536, bootstrapFactory);
 
         // Act
         handler.channelRead0(ctx, buf);
