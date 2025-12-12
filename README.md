@@ -94,9 +94,9 @@ java -jar target/tier2-proxy-<version>.jar or generate a runner inside your IDE
 
 For the user guide, please refer to the navigation below:
 
-- [`deployment-guide`](documents/deployment-guide.md)
-- [`installation-guide`](documents/installation-guide.md)
-- [`upgrade-guide`](documents/upgrade-guide.md)
+- [`deployment-guide`](documents/deployment-guide/README.md)
+- [`installation-guide`](documents/installation-guide/README.md)
+- [`upgrade-guide`](documents/upgrade-guide/README.md)
 
 ---
 
@@ -104,7 +104,7 @@ For the user guide, please refer to the navigation below:
 
 For the user guide, please refer to:
 
-- [`user-manual`](documents/user-manual.md)
+- [`user-manual`](documents/user-manual/README.md)
 
 ---
 
