@@ -2,7 +2,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ .Chart.Name }}-hpa
+  name: {{ .Release.Namespace }}-{{ .Chart.Name }}-hpa
   labels:
     {{- include "microservices.labels" . | nindent 4 }}
 spec:
