@@ -12,9 +12,10 @@
     - [Run Locally](#run-locally)
 4. [Installation guide](#installation-guide)
 5. [User Guide](#user-guide)
-6. [Testing](#testing)
-7. [Contact & Support](#contact--support)
-8. [License](#-license)
+6. [Configuration](#configuration)
+7. [Testing](#testing)
+8. [Contact & Support](#contact--support)
+9. [License](#-license)
 
 ---
 
@@ -105,6 +106,14 @@ For the user guide, please refer to the navigation below:
 For the user guide, please refer to:
 
 - [`user-manual`](documents/user-manual/README.md)
+
+---
+
+## Configuration
+
+This component supports configurable behaviour through a set of configuration options.
+
+All configuration parameters, including their keys, configuration mechanisms, default values, and allowed values or ranges, are documented in the [Installation Guide](./documents/installation-guide/README.md).
 
 ---
 
