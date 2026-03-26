@@ -132,10 +132,9 @@ mvn test
 
 You can also verify that the proxy is functioning correctly using curl. Below are example commands for both **HTTP(S)** and **SOCKS5** modes, covering various handshake scenarios.
 
-First, get the CA certificate:
-```shell
-curl tier2-proxy.<your-namespace>.svc.cluster.local:3000/cert > ca.pem
-```
+#### Get the CA certificate from Certificate Server (Port 3000)
+
+To get the CA certificate for TLS verification, you can refer to the [installation guide](./documents/installation-guide/README.md#getting-the-ca-certificate).
 
 #### Using HTTP/HTTPS Proxy (Port 3001)
 ```shell
