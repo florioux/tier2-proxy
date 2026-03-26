@@ -86,7 +86,12 @@ cd <path_to_tier2-proxy>
 mvn clean package
 # Run the service
 java -jar target/tier2-proxy-<version>.jar or generate a runner inside your IDE
-# The proxy will be available on ports 3000, 3001, 3002 by default.
+
+# The proxy exposes:
+# - Certificate server on port 3000
+# - HTTP/HTTPS proxy on port 3001
+# - SOCKS proxy on port 3002
+
 ```
 
 ---
@@ -103,7 +108,7 @@ For the user guide, please refer to the navigation below:
 
 ## User guide
 
-For the user guide, please refer to:
+For how to configure your client to use the proxy and/or for his customization/configuration, please refer to the user guide
 
 - [`user-manual`](documents/user-manual/README.md)
 
@@ -127,10 +132,9 @@ mvn test
 
 You can also verify that the proxy is functioning correctly using curl. Below are example commands for both **HTTP(S)** and **SOCKS5** modes, covering various handshake scenarios.
 
-First, get the CA certificate:
-```shell
-curl tier2-proxy.<your-namespace>.svc.cluster.local:3001/cert > ca.pem
-```
+#### Get the CA certificate from Certificate Server (Port 3000)
+
+To get the CA certificate for TLS verification, you can refer to the [installation guide](./documents/installation-guide/README.md#getting-the-ca-certificate).
 
 #### Using HTTP/HTTPS Proxy (Port 3001)
 ```shell

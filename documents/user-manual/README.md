@@ -37,7 +37,7 @@ This process ensures secure operation without requiring changes to the internal 
 
 This mode enables visibility over traditional, non-encrypted communication.
 
-![img](../docs/imgs/proxy-plain-text.png)
+![img](../../docs/imgs/proxy-plain-text.png)
 
 ### Encrypted (HTTPS/TLS)
 
@@ -54,7 +54,7 @@ This mode enables visibility over traditional, non-encrypted communication.
    authenticating itself with the participant’s credentials
 3. If mTLS fails or is unsupported, it falls back to standard TLS
 
-![img](../docs/imgs/proxy-tls.png)
+![img](../../docs/imgs/proxy-tls.png)
 
 ## Logging
 
@@ -88,6 +88,40 @@ java -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=3001 -jar myapp.jar
 
 # For SOCKS proxy configurations:
 java -DsocksProxyHost=127.0.0.1 -DsocksProxyPort=3003 -jar myapp.jar
+```
+
+If your application runs inside a Docker container, you need to ensure that the JVM variables are properly passed.
+Alternatively, if you plan to use Helm for deployment, you can optionally configure proxy settings within the chart values.
+
+**Important**: After downloading proxy's CA certificate with the following command:
+```shell
+curl tier2-proxy.<your-namespace>.svc.cluster.local:3000/cert > ca.pem
+```
+
+ensure that your client has installed it into its trust store, for example, if you are in a linux Debian based environment:
+
+1) Update package list with:
+
+```shell 
+sudo apt update
+```
+
+2) Download and install ca-certificates package with 
+
+```shell 
+sudo apt install -y ca-certificates
+```
+
+3) Copy your certificate to the local CA certificates directory
+
+```shell
+sudo cp ca.pem /usr/local/share/ca-certificates/local-ca.crt
+```
+
+4) Update trusted certificates file with the following cmd:
+
+```shell
+sudo update-ca-certificates
 ```
 
 If your application runs inside a Docker container, you need to ensure that the JVM variables are properly passed.

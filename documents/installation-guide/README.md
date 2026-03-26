@@ -23,6 +23,6 @@ java -jar target/tier2-proxy-<version>.jar
 To retrieve the internal CA certificate used by the proxy, you can use the following command. Make sure to adapt the service name and namespace to your environment.
 
 ```shell
-curl tier2-proxy.<your-namespace>.svc.cluster.local:3001/cert > ca.pem
+curl tier2-proxy.<your-namespace>.svc.cluster.local:3000/cert > ca.pem
 ```
 This certificate needs to be trusted by clients that will use the proxy.
