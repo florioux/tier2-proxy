@@ -3,6 +3,7 @@
 		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
 	<groupId>eu.europa.ec.simpl</groupId>
 	<artifactId>tier2-proxy</artifactId>
 	<version>${env.PROJECT_RELEASE_VERSION}</version>
@@ -243,7 +244,40 @@
 					</dependency>
 				</dependencies>
 			</plugin>
-		</plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>2.5.0</version>
+                <executions>
+                    <execution>
+                        <id>download-licenses</id>
+                        <configuration>
+                            <sortByGroupIdAndArtifactId>true</sortByGroupIdAndArtifactId>
+                            <licensesOutputDirectory>${user.home}/.m2/licenses</licensesOutputDirectory>
+                            <licensesOutputFile>${basedir}/THIRD_PARTY_LICENCES.xml</licensesOutputFile>
+                            <forceDownload>false</forceDownload>
+                        </configuration>
+                        <goals>
+                            <goal>download-licenses</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>add-third-party</id>
+                        <configuration>
+                            <sortArtifactByName>true</sortArtifactByName>
+                            <outputDirectory>${basedir}</outputDirectory>
+                            <thirdPartyFilename>THIRD_PARTY_LICENCES.md</thirdPartyFilename>
+                            <fileTemplate>${basedir}/src/main/resources/third-party-file.ftl</fileTemplate>
+                            <force>false</force>
+                        </configuration>
+                        <goals>
+                            <goal>add-third-party</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
 
 	</build>
 
