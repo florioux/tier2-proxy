@@ -43,8 +43,8 @@ The current section includes all third party libraries used as dependencies
 | (Eclipse Public License v2.0) | JUnit Platform Commons | org.junit.platform:junit-platform-commons | 1.11.0 | https://junit.org/junit5/ |
 | (Eclipse Public License v2.0) | JUnit Platform Engine API | org.junit.platform:junit-platform-engine | 1.11.0 | https://junit.org/junit5/ |
 | (Eclipse Public License v2.0) | JUnit Platform Launcher | org.junit.platform:junit-platform-launcher | 1.10.3 | https://junit.org/junit5/ |
-| (Eclipse Public License - v 1.0)(GNU Lesser General Public License) | Logback Classic Module | ch.qos.logback:logback-classic | 1.5.17 | http://logback.qos.ch/logback-classic |
-| (Eclipse Public License - v 1.0)(GNU Lesser General Public License) | Logback Core Module | ch.qos.logback:logback-core | 1.5.17 | http://logback.qos.ch/logback-core |
+| (Eclipse Public License - v 2.0)(GNU Lesser General Public License) | Logback Classic Module | ch.qos.logback:logback-classic | 1.5.32 | http://logback.qos.ch/logback-classic |
+| (Eclipse Public License - v 2.0)(GNU Lesser General Public License) | Logback Core Module | ch.qos.logback:logback-core | 1.5.32 | http://logback.qos.ch/logback-core |
 | (MIT) | mockito-core | org.mockito:mockito-core | 5.13.0 | https://github.com/mockito/mockito |
 | (MIT) | mockito-junit-jupiter | org.mockito:mockito-junit-jupiter | 5.13.0 | https://github.com/mockito/mockito |
 | (Apache License, Version 2.0) | Netty/All-in-One | io.netty:netty-all | 4.2.7.Final | https://netty.io/netty-all/ |
