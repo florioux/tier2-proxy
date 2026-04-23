@@ -1,3 +1,10 @@
+## 1.5.2 (2026-04-23)
+
+### fixed (1 change)
+
+- [[SIMPL-24052](https://jira.simplprogramme.eu/browse/SIMPL-24052) tier2-proxy -...](https://code.europa.eu/simpl/simpl-open/development/iaa/tier2-proxy/-/commit/7aa7a5af05006051c352442e2f9f956bb97c7f7d) ([merge request](https://code.europa.eu/simpl/simpl-open/development/iaa/tier2-proxy/-/merge_requests/42))
+
+
 ## 1.5.1 (2026-03-26)
 
 ### added (1 change)
