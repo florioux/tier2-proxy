@@ -31,7 +31,6 @@ class CertificateFactoryTest {
 
     private static final String TEST_HOST = "test.example.com";
     private static final String CA_KEY = "_ca";
-    private static final String SIGNATURE_ALGO = "SHA256withRSA";
 
     @Mock
     private CertificateAuthorityRepository certificateAuthorityRepository;
